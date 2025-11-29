@@ -114,13 +114,25 @@ backend/
 
 ## Future Enhancements
 
-- [ ] Voice transcription integration
-- [ ] Email service implementation
-- [ ] WhatsApp messaging integration
+- [x] Voice transcription integration (Implemented with Gemini Flash)
+- [x] Email service endpoints (Simulated)
+- [x] WhatsApp messaging endpoints (Simulated)
 - [ ] User authentication
 - [ ] Rate limiting
 - [ ] Database integration for history
 - [ ] Batch processing
+
+## Deployment on Render
+
+This project includes a `render.yaml` Blueprint for easy deployment.
+
+1.  Push your code to GitHub.
+2.  Log in to [Render](https://render.com/).
+3.  Click **New +** and select **Blueprint**.
+4.  Connect your GitHub repository.
+5.  Render will detect the `render.yaml` file.
+6.  **Important**: You will be prompted to enter your Environment Variables (`GEMINI_API_KEY`, `TAVILY_API_KEY`). Enter your actual API keys here.
+7.  Click **Apply** to deploy.
 
 ## License
 
