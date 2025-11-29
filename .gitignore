@@ -44,5 +44,9 @@ ENV/
 # Temporary/Generated files
 *.pdf
 *.docx
+*.wav
+*.mp3
 test_*.py
 list_models.py
+check_flash.py
+verify_voice.py

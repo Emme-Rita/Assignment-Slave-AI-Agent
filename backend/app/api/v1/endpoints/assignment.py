@@ -105,24 +105,32 @@ async def analyze_with_voice(
         elif file_category == 'image':
             file_content = f"[Image file: {file.filename}]"
         
-        # For voice, we'll use a placeholder prompt
-        # In production, you'd transcribe the audio using Whisper or similar
-        prompt = "[Voice instructions - transcription needed]"
-        # TODO: Implement audio transcription service
+        # Prepare audio data
+        audio_data = {
+            "data": voice_bytes,
+            "mime_type": voice_file.content_type or "audio/mp3"
+        }
+        
+        prompt = "Please listen to the voice instructions and help with the assignment."
         
         # Perform research if requested
         context = None
         if use_research:
+            # For research, we need a text query. Since we don't have transcription yet,
+            # we'll use a generic query or rely on the file content if possible.
+            # Ideally, we'd transcribe first, then research.
+            # For now, we'll skip specific research based on voice, or use a generic one.
             research_results = await search_service.perform_research(
-                "General assignment help"  # Would use transcribed voice
+                "General assignment help" 
             )
             context = research_results['summary']
         
-        # Generate AI response
+        # Generate AI response with audio
         response = await ai_service.generate_response(
             prompt=prompt,
             file_content=file_content,
-            context=context
+            context=context,
+            audio_data=audio_data
         )
         
         return {
@@ -130,8 +138,7 @@ async def analyze_with_voice(
             "response": response,
             "file_processed": file.filename,
             "voice_processed": voice_file.filename,
-            "research_used": use_research,
-            "note": "Voice transcription not yet implemented"
+            "research_used": use_research
         }
     
     except HTTPException as he:

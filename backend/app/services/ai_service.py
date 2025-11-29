@@ -11,30 +11,51 @@ genai.configure(api_key=settings.GEMINI_API_KEY)
 class AIService:
     def __init__(self):
         self.model = genai.GenerativeModel('gemini-pro-latest')
+        self.audio_model = genai.GenerativeModel('gemini-flash-latest')
     
     async def generate_response(
         self, 
         prompt: str, 
         file_content: Optional[str] = None,
-        context: Optional[str] = None
+        context: Optional[str] = None,
+        audio_data: Optional[dict] = None
     ) -> str:
         """
-        Generate AI response based on prompt, file content, and optional context.
+        Generate AI response based on prompt, file content, optional context, and audio.
         
         Args:
             prompt: User's instruction/question
             file_content: Extracted text from uploaded files
             context: Additional context (e.g., from research)
+            audio_data: Dict containing 'data' (bytes) and 'mime_type' (str)
         
         Returns:
             AI-generated response
         """
         try:
-            # Build the full prompt
-            full_prompt = self._build_prompt(prompt, file_content, context)
+            # Build the prompt parts
+            parts = []
+            
+            if context:
+                parts.append(f"Research Context:\n{context}\n")
+            
+            if file_content:
+                parts.append(f"Assignment Content:\n{file_content}\n")
+            
+            parts.append(f"User Instructions:\n{prompt}")
+            
+            # Select model and add audio if present
+            if audio_data:
+                model = self.audio_model
+                parts.append({
+                    "mime_type": audio_data['mime_type'],
+                    "data": audio_data['data']
+                })
+            else:
+                model = self.model
             
             # Generate response
-            response = self.model.generate_content(full_prompt)
+            response = model.generate_content(parts)
             return response.text
         
         except Exception as e:
