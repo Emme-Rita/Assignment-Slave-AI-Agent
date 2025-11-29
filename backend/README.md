@@ -122,17 +122,24 @@ backend/
 - [ ] Database integration for history
 - [ ] Batch processing
 
-## Deployment on Render
-
-This project includes a `render.yaml` Blueprint for easy deployment.
+## Deployment on Render (Web Service)
 
 1.  Push your code to GitHub.
 2.  Log in to [Render](https://render.com/).
-3.  Click **New +** and select **Blueprint**.
-4.  Connect your GitHub repository.
-5.  Render will detect the `render.yaml` file.
-6.  **Important**: You will be prompted to enter your Environment Variables (`GEMINI_API_KEY`, `TAVILY_API_KEY`). Enter your actual API keys here.
-7.  Click **Apply** to deploy.
+3.  Click **New +** and select **Web Service**.
+4.  Connect your GitHub repository (`Assignment-Slave-AI-Agent`).
+5.  Configure the service:
+    *   **Name**: `assignment-helper-backend` (or any name you prefer)
+    *   **Runtime**: `Python 3`
+    *   **Build Command**: `pip install -r requirements.txt`
+    *   **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+    *   **Root Directory**: `backend`
+6.  **Environment Variables**:
+    *   Scroll down to "Environment Variables" and add:
+        *   `GEMINI_API_KEY`: Your actual Gemini API key
+        *   `TAVILY_API_KEY`: Your actual Tavily API key
+        *   `PYTHON_VERSION`: `3.11.0` (Recommended)
+7.  Click **Create Web Service**.
 
 ## License
 
