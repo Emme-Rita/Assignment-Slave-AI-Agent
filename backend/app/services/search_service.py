@@ -4,7 +4,7 @@ from typing import List, Dict
 
 class SearchService:
     def __init__(self):
-        self.client = TavilyClient(api_key=settings.TAVILY_API_KEY)
+            self.client = TavilyClient(api_key=settings.TAVILY_API_KEY)
     
     async def perform_research(self, query: str, max_results: int = 5) -> Dict:
         """
