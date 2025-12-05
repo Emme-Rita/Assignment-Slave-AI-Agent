@@ -10,26 +10,17 @@ class WhatsAppRequest(BaseModel):
     message: str
     media_url: Optional[str] = None
 
-@router.post("/send")
+@router.post("/whatsapp", response_model=dict)
 async def send_whatsapp(request: WhatsAppRequest):
     """
-    Send a WhatsApp message.
+    Send a WhatsApp message using Meta Graph API.
     """
     try:
-        await whatsapp_service.send_assignment_result(
+        response = await whatsapp_service.send_assignment_result(
             phone_number=request.phone_number,
             message=request.message,
             media_url=request.media_url
         )
-        return {"success": True, "message": "WhatsApp message sent successfully (placeholder)"}
-    except NotImplementedError:
-        return {
-            "success": True, 
-            "message": f"WhatsApp message simulated to {request.phone_number}",
-            "data": {
-                "message": request.message,
-                "media_url": request.media_url
-            }
-        }
+        return {"success": True, "message": "WhatsApp message sent", "api_response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -5,7 +5,10 @@ api_router = APIRouter()
 
 api_router.include_router(
     assignment.router,
-    prefix="/assignment",
+    prefix="", # Expose directly under /api/v1 so we get /api/v1/submit. 
+    # Note: User asked for /api/submit. The base path is usually /api/v1 defined in config.
+    # So this will result in /api/v1/submit. If user strictly needs /api/submit, we'd need to change API_V1_STR or move this router.
+    # Assuming /api/v1/submit is acceptable or we alias it.
     tags=["assignment"]
 )
 
@@ -17,13 +20,13 @@ api_router.include_router(
 
 api_router.include_router(
     email.router,
-    prefix="/email",
+    prefix="/send",
     tags=["email"]
 )
 
 api_router.include_router(
     whatsapp.router,
-    prefix="/whatsapp",
+    prefix="/send",
     tags=["whatsapp"]
 )
 

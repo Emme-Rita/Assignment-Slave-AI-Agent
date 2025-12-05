@@ -44,6 +44,20 @@ class AIService:
             
             parts.append(f"User Instructions:\n{prompt}")
             
+            parts.append("""
+            IMPORTANT: You must return the response in valid JSON format with the following structure:
+            {
+                "id": "unique_id",
+                "title": "Assignment Title",
+                "question": "The main question or topic identified",
+                "answer": "The detailed answer/solution",
+                "summary": "A brief summary of the answer",
+                "note": "Any important notes or warnings",
+                "more": "Additional resources or related topics"
+            }
+            Do not include markdown formatting (like ```json) in the response, just the raw JSON string.
+            """)
+            
             # Select model and add audio if present
             if audio_data:
                 model = self.audio_model

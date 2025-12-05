@@ -6,3 +6,6 @@ tavily-python
 python-dotenv
 PyPDF2
 python-docx
+requests
+reportlab
+fastapi-mail
