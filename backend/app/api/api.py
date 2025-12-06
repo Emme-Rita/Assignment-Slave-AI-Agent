@@ -38,3 +38,9 @@ api_router.include_router(
     prefix="/student",
     tags=["student"]
 )
+
+api_router.include_router(
+    history.router,
+    prefix="/history",
+    tags=["history"]
+)
