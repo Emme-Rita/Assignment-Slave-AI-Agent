@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import assignment, research, email, whatsapp, student
+from app.api.v1.endpoints import assignment, research, email, whatsapp, student, history
 
 api_router = APIRouter()
 
@@ -34,4 +34,10 @@ api_router.include_router(
     student.router,
     prefix="/student",
     tags=["student"]
+)
+
+api_router.include_router(
+    history.router,
+    prefix="/history",
+    tags=["history"]
 )

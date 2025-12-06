@@ -12,6 +12,11 @@ app = FastAPI(
 # Setup CORS
 setup_cors(app)
 
+# Create database tables
+from app.db.session import engine, Base
+from app.models import conversation # Import models to register them
+Base.metadata.create_all(bind=engine)
+
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 

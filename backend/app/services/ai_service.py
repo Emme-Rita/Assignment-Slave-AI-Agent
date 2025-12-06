@@ -69,7 +69,7 @@ class AIService:
                 model = self.model
             
             # Generate response
-            response = model.generate_content(parts)
+            response = await model.generate_content_async(parts)
             return response.text
         
         except Exception as e:

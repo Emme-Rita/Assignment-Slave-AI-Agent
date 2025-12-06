@@ -1,9 +1,12 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from typing import Optional, Union
 from app.services.ai_service import ai_service
-from app.services.file_service import file_service
 from app.services.search_service import search_service
 import base64
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from app.db.session import get_db
+from app.models.conversation import Conversation
 
 router = APIRouter()
 
@@ -77,7 +80,8 @@ async def submit_assignment(
     image: Union[UploadFile, str, None] = File(None),
     voice: Union[UploadFile, str, None] = File(None),
     file: Union[UploadFile, str, None] = File(None), # Keep for backward compatibility or if they send 'file' instead of 'image'
-    prompt: Optional[str] = Form(None) # Optional text prompt
+    prompt: Optional[str] = Form(None), # Optional text prompt
+    db: Session = Depends(get_db)
 ):
     """
     Submit assignment (Image + Voice) for AI processing.
@@ -136,9 +140,27 @@ async def submit_assignment(
         # We don't use 'context' (research) explicitly here as the new workflow implies the AI does it all.
         # But we can still trigger it if needed. For now, let's keep it simple.
         
+        # Perform Research (Integrated Step)
+        context = None
+        search_query = prompt if prompt else None
+        
+        # If no prompt, try to use extracted text as query (truncate if too long)
+        if not search_query and file_content and isinstance(file_content, str):
+            search_query = file_content[:200].replace("\n", " ")
+            
+        if search_query:
+            try:
+                # We interpret "it researches on it" as integrated.
+                # We'll use the search service to get context.
+                research_results = await search_service.perform_research(search_query)
+                context = research_results.get('summary')
+            except Exception as e:
+                print(f"Research failed (continuing without): {e}")
+
         ai_response_text = await ai_service.generate_response(
             prompt=final_prompt,
             file_content=file_content,
+            context=context,
             audio_data=audio_data
         )
         
@@ -156,7 +178,7 @@ async def submit_assignment(
             
         except json.JSONDecodeError:
             # Fallback if AI didn't return valid JSON
-            return {
+            response_data = {
                 "id": str(uuid.uuid4()),
                 "title": "Assignment Response",
                 "question": "Could not parse question",
@@ -165,6 +187,24 @@ async def submit_assignment(
                 "note": "Response was not in expected JSON format",
                 "more": ""
             }
+            
+        # Save to Database
+        try:
+            conversation_entry = Conversation(
+                id=response_data.get("id"),
+                title=response_data.get("title", "New Conversation"),
+                prompt=final_prompt,
+                file_name=assignment_file.filename if assignment_file else None,
+                response_json=json.dumps(response_data),
+            )
+            db.add(conversation_entry)
+            db.commit()
+            db.refresh(conversation_entry)
+        except Exception as e:
+            print(f"Error saving to DB: {e}")
+            # Don't fail the request if DB save fails, just log it
+            
+        return response_data
 
     except HTTPException as he:
         raise he

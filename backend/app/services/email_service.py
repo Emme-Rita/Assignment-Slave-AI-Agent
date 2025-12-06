@@ -4,11 +4,12 @@ Email Service - Future Implementation
 This service will handle sending emails with assignment results.
 """
 
-from typing import Optional
+from typing import Optional, List
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from app.core.config import settings
-from typing import List, Optional
-import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class EmailService:
     """
@@ -46,15 +47,22 @@ class EmailService:
             content: Email body content
             attachments: List of file paths to attach
         """
-        message = MessageSchema(
-            subject=subject,
-            recipients=[recipient],
-            body=content,
-            subtype=MessageType.html,
-            attachments=attachments
-        )
-        
-        await self.fastmail.send_message(message)
+        try:
+            message = MessageSchema(
+                subject=subject,
+                recipients=[recipient],
+                body=content,
+                subtype=MessageType.html,
+                attachments=attachments
+            )
+            
+            await self.fastmail.send_message(message)
+            logger.info(f"Email sent successfully to {recipient}")
+            
+        except Exception as e:
+            logger.error(f"Failed to send email to {recipient}: {str(e)}")
+            # For now, we raise it so the endpoint returns 500, or we could return False
+            raise e
     
     async def send_notification(
         self,
@@ -65,13 +73,6 @@ class EmailService:
         """
         Send a simple notification via email.
         """
-        message = MessageSchema(
-            subject=subject,
-            recipients=[recipient],
-            body=content,
-            subtype=MessageType.html
-        )
-        
-        await self.fastmail.send_message(message)
+        await self.send_assignment_result(recipient, subject, content)
 
 email_service = EmailService()
