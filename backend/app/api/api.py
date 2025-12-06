@@ -1,11 +1,11 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import assignment, research, email, whatsapp, student
+from app.api.v1.endpoints import assignment, research, email, whatsapp, student, history
 
 api_router = APIRouter()
 
 api_router.include_router(
     assignment.router,
-    prefix="/assignment",
+    prefix="", 
     tags=["assignment"]
 )
 
@@ -16,14 +16,20 @@ api_router.include_router(
 )
 
 api_router.include_router(
+    history.router,
+    prefix="",
+    tags=["history"]
+)
+
+api_router.include_router(
     email.router,
-    prefix="/email",
+    prefix="/send",
     tags=["email"]
 )
 
 api_router.include_router(
     whatsapp.router,
-    prefix="/whatsapp",
+    prefix="/send",
     tags=["whatsapp"]
 )
 

@@ -5,54 +5,80 @@ This service will handle sending emails with assignment results.
 """
 
 from typing import Optional
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+from app.core.config import settings
+from typing import List, Optional
+import os
 
 class EmailService:
     """
     Email service for sending assignment results and notifications.
-    
-    Future implementation will include:
-    - SMTP configuration
-    - Email templates
-    - Attachment support
-    - HTML email formatting
+    Uses fastapi-mail for SMTP integration.
     """
     
+    
     def __init__(self):
-        # TODO: Initialize email client (e.g., SMTP, SendGrid, etc.)
-        pass
+        self.enabled = bool(settings.MAIL_USERNAME and settings.MAIL_SERVER)
+        if self.enabled:
+            self.conf = ConnectionConfig(
+                MAIL_USERNAME=settings.MAIL_USERNAME,
+                MAIL_PASSWORD=settings.MAIL_PASSWORD,
+                MAIL_FROM=settings.MAIL_FROM,
+                MAIL_PORT=settings.MAIL_PORT,
+                MAIL_SERVER=settings.MAIL_SERVER,
+                MAIL_STARTTLS=True,
+                MAIL_SSL_TLS=False,
+                USE_CREDENTIALS=True,
+                VALIDATE_CERTS=True
+            )
+            self.fastmail = FastMail(self.conf)
+        else:
+            print("Email Service: Disabled (Missing Credentials). Emails will be mocked.")
     
     async def send_assignment_result(
         self,
         recipient: str,
         subject: str,
         content: str,
-        attachments: Optional[list] = None
+        attachments: Optional[List[str]] = None
     ):
         """
         Send assignment result via email.
-        
-        Args:
-            recipient: Email address
-            subject: Email subject
-            content: Email body
-            attachments: Optional file attachments
         """
-        # TODO: Implement email sending logic
-        raise NotImplementedError("Email service not yet implemented")
+        if not self.enabled:
+            print(f"[`MOCK EMAIL`] To: {recipient} | Subject: {subject} | Attachments: {attachments}")
+            return
+
+        message = MessageSchema(
+            subject=subject,
+            recipients=[recipient],
+            body=content,
+            subtype=MessageType.html,
+            attachments=attachments
+        )
+        
+        await self.fastmail.send_message(message)
     
     async def send_notification(
         self,
         recipient: str,
-        message: str
+        subject: str,
+        content: str
     ):
         """
-        Send a simple notification email.
-        
-        Args:
-            recipient: Email address
-            message: Notification message
+        Send a simple notification via email.
         """
-        # TODO: Implement notification logic
-        raise NotImplementedError("Email service not yet implemented")
+        if not self.enabled:
+            print(f"[`MOCK EMAIL`] To: {recipient} | Subject: {subject}")
+            return
+
+        message = MessageSchema(
+            subject=subject,
+            recipients=[recipient],
+            body=content,
+            subtype=MessageType.html
+        )
+        
+        await self.fastmail.send_message(message)
 
 email_service = EmailService()

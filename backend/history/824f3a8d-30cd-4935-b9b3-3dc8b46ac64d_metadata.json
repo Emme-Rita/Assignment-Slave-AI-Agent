@@ -1,0 +1,13 @@
+{
+  "id": "824f3a8d-30cd-4935-b9b3-3dc8b46ac64d",
+  "timestamp": "2025-12-06T08:41:36.933220",
+  "prompt": "give the answer in a word document",
+  "student_level": "University",
+  "department": "General",
+  "submission_format": "text",
+  "use_research": true,
+  "stealth_mode": false,
+  "style_mirrored": false,
+  "email_sent": false,
+  "file_generated": null
+}

@@ -1,0 +1,13 @@
+{
+  "id": "16358f9f-9700-4fbc-8570-d749b006b780",
+  "timestamp": "2025-12-06T08:21:36.221937",
+  "prompt": "string",
+  "student_level": "University",
+  "department": "General",
+  "submission_format": "text",
+  "use_research": false,
+  "stealth_mode": false,
+  "style_mirrored": false,
+  "email_sent": false,
+  "file_generated": null
+}

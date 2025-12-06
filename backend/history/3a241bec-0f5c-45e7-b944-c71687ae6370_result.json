@@ -1,0 +1,63 @@
+{
+  "id": "qc_facts_123",
+  "title": "Quantum Computing Facts",
+  "question": "What are three facts about Quantum Computers?",
+  "answer": "Based on the provided research, here are three facts about Quantum Computers:\n1. They operate on the principles of quantum mechanics. Unlike classical computers, they utilize the behavior of particles at a subatomic scale to process information.\n2. Error correction is a critical and pressing issue. The quantum states that these computers rely on are extremely fragile, and even minor environmental disturbances can introduce errors into the calculations.\n3. Scalability is a major engineering challenge. Building large-scale, stable quantum computers is a significant hurdle that researchers are currently working to overcome.",
+  "summary": "Three key facts about quantum computers are that they are based on the laws of quantum mechanics, face significant challenges with error correction due to the fragility of quantum states, and are difficult to scale up to larger sizes.",
+  "note": "The information emphasizes the foundational principles and current challenges in the field of quantum computing.",
+  "more": [
+    "Quantum Mechanics",
+    "Quantum Error Correction",
+    "Scalability in Computing",
+    "Quantum Supremacy"
+  ],
+  "verification": {
+    "trust_score": 0.5,
+    "claims": [
+      {
+        "claim": "id",
+        "status": "Unverified",
+        "reasoning": "",
+        "source": ""
+      },
+      {
+        "claim": "title",
+        "status": "Unverified",
+        "reasoning": "",
+        "source": ""
+      },
+      {
+        "claim": "question",
+        "status": "Unverified",
+        "reasoning": "",
+        "source": ""
+      },
+      {
+        "claim": "answer",
+        "status": "Unverified",
+        "reasoning": "",
+        "source": ""
+      },
+      {
+        "claim": "summary",
+        "status": "Unverified",
+        "reasoning": "",
+        "source": ""
+      },
+      {
+        "claim": "note",
+        "status": "Unverified",
+        "reasoning": "",
+        "source": ""
+      },
+      {
+        "claim": "more",
+        "status": "Unverified",
+        "reasoning": "",
+        "source": ""
+      }
+    ],
+    "citations": [],
+    "is_reliable": false
+  }
+}
