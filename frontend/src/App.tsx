@@ -29,6 +29,7 @@ function App() {
   const [department, setDepartment] = useState('Computer Science');
   const [submissionFormat, setSubmissionFormat] = useState('docx');
   const [email, setEmail] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
 
   const handleAnalyze = async () => {
     if (!file && !instructions && !audioBlob) return;
@@ -48,26 +49,24 @@ function App() {
       formData.append('department', department);
       formData.append('submission_format', submissionFormat);
       if (email) formData.append('email', email);
+      if (whatsapp) formData.append('whatsapp', whatsapp);
 
       if (audioBlob) {
         const audioFile = new File([audioBlob], "voice_note.webm", { type: 'audio/webm' });
         formData.append('voice', audioFile);
       }
 
-      const response = await assignmentApi.analyze(formData);
-      let parsedResult = response.data;
+      const response = await assignmentApi.execute(formData);
+      let parsedResult = response.data; // { success: true, data: {...}, file_generated: "...", ... }
 
-      if (parsedResult.success && parsedResult.response) {
-        // Parse the response string (could be JSON)
-        try {
-          const parsed = JSON.parse(parsedResult.response.replace(/```json|```/g, '').trim());
-          setResult(parsed);
-        } catch {
-          // If not JSON, use as is
-          setResult({ answer: parsedResult.response });
-        }
-      } else if (parsedResult.success && parsedResult.data) {
-        setResult(parsedResult.data);
+      if (parsedResult.success) {
+        // Merge the core data (answer, title) with the metadata (file, verification)
+        const mergedResult = {
+          ...parsedResult.data,
+          file_generated: parsedResult.file_generated,
+          verification: parsedResult.verification || parsedResult.data.verification // Handle undefined verification
+        };
+        setResult(mergedResult);
       } else {
         setResult(parsedResult);
       }
@@ -157,14 +156,22 @@ function App() {
           <Card>
             <CardContent className="p-4 space-y-2">
               <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-primary" /> Email Delivery (Optional)
+                <Mail className="w-4 h-4 text-primary" /> Delivery (Social)
               </label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@university.edu"
-              />
+              <div className="space-y-3">
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email Address"
+                />
+                <Input
+                  type="tel"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                  placeholder="WhatsApp Number (e.g. +1234567890)"
+                />
+              </div>
             </CardContent>
           </Card>
         </div>

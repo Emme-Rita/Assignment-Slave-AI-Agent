@@ -22,9 +22,10 @@ export function ResearchView() {
             if (response.data.success) {
                 setResults(response.data.data);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert("Research failed. Please try again.");
+            const msg = error.response?.data?.detail || error.message || "Unknown error";
+            alert(`Research failed: ${msg}`);
         } finally {
             setIsSearching(false);
         }
@@ -39,15 +40,17 @@ export function ResearchView() {
 
             <Card>
                 <CardContent className="p-6 flex gap-4">
-                    <Input
-                        type="text"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                        placeholder="Enter a topic to research (e.g., 'Quantum Computing advancements 2024')..."
-                        leftIcon={<Search size={18} />}
-                        className="flex-1 border-primary/20 focus:border-primary/50"
-                    />
+                    <div className="flex-1">
+                        <Input
+                            type="text"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                            placeholder="Enter a topic to research..."
+                            leftIcon={<Search size={18} />}
+                            className="border-primary/20 focus:border-primary/50"
+                        />
+                    </div>
                     <Button
                         onClick={handleSearch}
                         disabled={isSearching}

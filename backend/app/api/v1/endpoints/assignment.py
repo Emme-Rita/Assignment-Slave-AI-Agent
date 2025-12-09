@@ -1,7 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from typing import Optional, Union
 from app.services.ai_service import ai_service
-<<<<<<< HEAD
 from app.services.file_service import file_service
 from app.services.email_service import email_service
 from app.services.humanizer_service import humanizer_service
@@ -12,14 +11,6 @@ import base64
 import json
 import uuid
 import os
-=======
-from app.services.search_service import search_service
-import base64
-from sqlalchemy.orm import Session
-from fastapi import Depends
-from app.db.session import get_db
-from app.models.conversation import Conversation
->>>>>>> da790a06c72ce82f237ad49c9726ece5c80e44dd
 
 router = APIRouter()
 
@@ -113,6 +104,7 @@ async def analyze_assignment(
             "style_mirrored": False,
             "email_sent": False,
             "file_generated": None,
+            "research_context": context,
             "result": response_json
         })
         
@@ -135,8 +127,7 @@ async def submit_assignment(
     image: Union[UploadFile, str, None] = File(None),
     voice: Union[UploadFile, str, None] = File(None),
     file: Union[UploadFile, str, None] = File(None), # Keep for backward compatibility or if they send 'file' instead of 'image'
-    prompt: Optional[str] = Form(None), # Optional text prompt
-    db: Session = Depends(get_db)
+    prompt: Optional[str] = Form(None) # Optional text prompt
 ):
     """
     Submit assignment (Image + Voice) for AI processing.
@@ -184,12 +175,6 @@ async def submit_assignment(
         if voice:
             final_prompt += " (See audio instructions)"
             
-        # Generate Response
-<<<<<<< HEAD
-=======
-        # We don't use 'context' (research) explicitly here as the new workflow implies the AI does it all.
-        # But we can still trigger it if needed. For now, let's keep it simple.
-        
         # Perform Research (Integrated Step)
         context = None
         search_query = prompt if prompt else None
@@ -207,7 +192,6 @@ async def submit_assignment(
             except Exception as e:
                 print(f"Research failed (continuing without): {e}")
 
->>>>>>> da790a06c72ce82f237ad49c9726ece5c80e44dd
         ai_response_text = await ai_service.generate_response(
             prompt=final_prompt,
             file_content=file_content,
@@ -273,6 +257,7 @@ async def execute_assignment(
     department: str = Form("General"),
     submission_format: str = Form("docx"),
     email: Optional[str] = Form(None),
+    whatsapp: Optional[str] = Form(None),
     use_research: bool = Form(True),
     stealth_mode: bool = Form(False)
 ):
@@ -283,7 +268,7 @@ async def execute_assignment(
     3. Generation (with Student Profile & Style Mirroring)
     4. Stealth Mode (Humanization) [Optional]
     5. Formatting (PDF/Docx)
-    6. Submission (Email)
+    6. Submission (Email & WhatsApp)
     """
     try:
         # 1. Input Processing
@@ -400,8 +385,10 @@ async def execute_assignment(
             # File generation failed
             pass
 
-        # 6. Submission Phase (Email)
+        # 6. Submission Phase (Email & WhatsApp)
         email_sent = False
+        whatsapp_sent = False
+        
         if email and generated_file_path:
             try:
                 await email_service.send_assignment_result(
@@ -412,11 +399,21 @@ async def execute_assignment(
                 )
                 email_sent = True
             except Exception as e:
-                # Email failed
                 pass
 
+        if whatsapp:
+            try:
+                from app.services.whatsapp_service import whatsapp_service
+                msg = f"Assignment Slave: Your task '{title}' is complete!\nResult has been generated ({submission_format}).\nConfidence: High."
+                if email_sent:
+                    msg += f"\nFull document sent to {email}."
+                
+                await whatsapp_service.send_notification(whatsapp, msg)
+                whatsapp_sent = True
+            except Exception as e:
+                print(f"WhatsApp error: {e}")
+
         # Save to history
-        print("[DEBUG] About to save execution to history...")
         await history_service.save_execution({
             "prompt": prompt,
             "student_level": student_level,
@@ -427,9 +424,9 @@ async def execute_assignment(
             "style_mirrored": bool(style_instruction),
             "email_sent": email_sent,
             "file_generated": generated_file_path,
+            "research_context": research_summary,
             "result": response_json
         })
-        print("[DEBUG] History save completed")
 
         return {
             "success": True,
@@ -437,6 +434,7 @@ async def execute_assignment(
             "research_context": research_summary,
             "file_generated": generated_file_path,
             "email_sent": email_sent,
+            "whatsapp_sent": whatsapp_sent,
             "stealth_mode": stealth_mode,
             "style_mirrored": bool(style_instruction)
         }

@@ -3,6 +3,7 @@ from app.core.config import settings
 import PyPDF2
 import docx
 import io
+import json
 from typing import Optional, List
 
 # Configure Gemini
@@ -10,7 +11,8 @@ genai.configure(api_key=settings.GEMINI_API_KEY)
 
 class AIService:
     def __init__(self):
-        self.model = genai.GenerativeModel('gemini-pro-latest')
+        # gemini-flash-latest is explicitly listed in available models
+        self.model = genai.GenerativeModel('gemini-flash-latest')
         self.audio_model = genai.GenerativeModel('gemini-flash-latest')
     
     async def generate_response(
@@ -84,7 +86,29 @@ class AIService:
             
             # Generate response
             response = await model.generate_content_async(parts)
-            return response.text
+            
+            # Safety check: Verify valid response
+            if response.candidates and response.candidates[0].content.parts:
+                return response.text
+            elif response.candidates and response.candidates[0].finish_reason:
+                # If finished but no text, usually safety block
+                 return json.dumps({
+                    "id": "safety_block",
+                    "title": "Content Blocked",
+                    "question": "Safety Filter Triggered",
+                    "answer": f"The AI model refused to generate this content. Reason code: {response.candidates[0].finish_reason}. Please modify your prompt.",
+                    "summary": "Safety restriction",
+                    "note": "Try rephrasing or removing sensitive keywords."
+                })
+            else:
+                 return json.dumps({
+                    "id": "error",
+                    "title": "Generation Error",
+                    "question": "Unknown Error",
+                    "answer": "The AI returned an empty response.",
+                    "summary": "Error",
+                    "note": "Please try again."
+                })
         
         except Exception as e:
             raise Exception(f"AI Service Error: {str(e)}")

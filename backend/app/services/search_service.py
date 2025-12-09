@@ -4,9 +4,15 @@ from typing import List, Dict
 
 class SearchService:
     def __init__(self):
-            self.client = TavilyClient(api_key=settings.TAVILY_API_KEY)
+        self.api_key = settings.TAVILY_API_KEY
+        if self.api_key:
+            self.client = TavilyClient(api_key=self.api_key)
+        else:
+            self.client = None
+            print("Search Service: Disabled (Missing TAVILY_API_KEY)")
     
     async def perform_research(self, query: str, max_results: int = 5) -> Dict:
+        print(f"[DEBUG] SearchService.perform_research called with query: {query}")
         """
         Perform web research using Tavily API.
         
@@ -17,6 +23,14 @@ class SearchService:
         Returns:
             Dictionary containing search results and summary
         """
+        if not self.client:
+             return {
+                 "query": query,
+                 "answer": "Research functionality is currently disabled.",
+                 "sources": [],
+                 "summary": "Please configure the TAVILY_API_KEY in your backend .env file to enable live web research."
+             }
+
         try:
             # Perform search
             response = self.client.search(

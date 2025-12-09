@@ -44,3 +44,10 @@ api_router.include_router(
     prefix="/history",
     tags=["history"]
 )
+
+from app.api.v1.endpoints import download
+api_router.include_router(
+    download.router,
+    prefix="",
+    tags=["download"]
+)

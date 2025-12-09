@@ -3,7 +3,7 @@ import { History, Trash2, Eye, Calendar, FileText, CheckCircle, XCircle } from '
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
-import axios from 'axios';
+import { assignmentApi } from '../../lib/api';
 
 interface HistoryRecord {
     id: string;
@@ -17,6 +17,7 @@ interface HistoryRecord {
     style_mirrored: boolean;
     email_sent: boolean;
     file_generated: string | null;
+    research_context?: string | null;
     result?: {
         title?: string;
         question?: string;
@@ -36,9 +37,14 @@ export function HistoryView() {
     const loadHistory = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get('http://localhost:8001/api/v1/history');
+            console.log("Fetching history...");
+            const response = await assignmentApi.getHistory();
+            console.log("History response:", response);
             if (response.data.success) {
+                console.log("Setting records:", response.data.data);
                 setRecords(response.data.data);
+            } else {
+                console.error("History API returned success: false");
             }
         } catch (error) {
             console.error('Failed to load history:', error);
@@ -49,7 +55,7 @@ export function HistoryView() {
 
     const viewDetails = async (recordId: string) => {
         try {
-            const response = await axios.get(`http://localhost:8001/api/v1/history/${recordId}`);
+            const response = await assignmentApi.getHistoryDetails(recordId);
             if (response.data.success) {
                 setSelectedRecord(response.data.data);
             }
@@ -62,7 +68,7 @@ export function HistoryView() {
         if (!confirm('Are you sure you want to delete this record?')) return;
 
         try {
-            await axios.delete(`http://localhost:8001/api/v1/history/${recordId}`);
+            await assignmentApi.deleteHistory(recordId);
             setRecords(records.filter(r => r.id !== recordId));
             if (selectedRecord?.id === recordId) {
                 setSelectedRecord(null);
@@ -161,6 +167,16 @@ export function HistoryView() {
                                                 <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-1">Summary</h4>
                                                 <p className="text-gray-300 text-sm leading-relaxed">{selectedRecord.result.summary || 'N/A'}</p>
                                             </div>
+                                            {selectedRecord.research_context && (
+                                                <div>
+                                                    <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-1 text-blue-400">Research Context</h4>
+                                                    <div className="bg-navy-900/50 p-3 rounded-lg border border-white/5">
+                                                        <p className="text-blue-100/80 text-xs leading-relaxed max-h-40 overflow-y-auto custom-scrollbar">
+                                                            {selectedRecord.research_context}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
                                             {selectedRecord.file_generated && (
                                                 <div className="pt-4 border-t border-white/10 flex items-center gap-2">
                                                     <FileText size={16} className="text-primary" />

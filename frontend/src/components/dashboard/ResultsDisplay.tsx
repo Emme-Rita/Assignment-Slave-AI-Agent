@@ -1,8 +1,10 @@
-import { Bot, CheckCircle, AlertCircle, BookOpen, ShieldCheck, Info } from 'lucide-react';
+import { Bot, CheckCircle, AlertCircle, BookOpen, ShieldCheck, Info, Download } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
+import { Button } from '../ui/Button';
 import { Alert, AlertTitle, AlertDescription } from '../ui/Alert';
 import { clsx } from 'clsx';
+import { assignmentApi } from '../../lib/api';
 
 interface VerificationResult {
     trust_score: number;
@@ -28,6 +30,7 @@ interface AnalysisResult {
     note?: string;
     more?: string;
     verification?: VerificationResult;
+    file_generated?: string; // Path to generated file
 }
 
 interface ResultsDisplayProps {
@@ -53,6 +56,16 @@ export function ResultsDisplay({ result, isLoading }: ResultsDisplayProps) {
         return 'destructive';
     };
 
+    const handleDownload = () => {
+        if (result.file_generated) {
+            // Extract filename from path
+            const filename = result.file_generated.split(/[\\/]/).pop();
+            if (filename) {
+                window.open(assignmentApi.getDownloadUrl(filename), '_blank');
+            }
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between mb-6">
@@ -63,12 +76,21 @@ export function ResultsDisplay({ result, isLoading }: ResultsDisplayProps) {
                     <h2 className="text-xl font-bold text-white">Analysis Results</h2>
                 </div>
 
-                {result.verification && (
-                    <Badge variant={getTrustBadgeVariant(result.verification.trust_score)} className="gap-2 px-3 py-1.5 text-sm">
-                        <ShieldCheck size={16} />
-                        Trust Score: {Math.round(result.verification.trust_score * 100)}%
-                    </Badge>
-                )}
+                <div className="flex items-center gap-2">
+                    {result.file_generated && (
+                        <Button variant="secondary" size="sm" onClick={handleDownload} className="gap-2 bg-navy-800 border border-white/10 hover:bg-navy-700">
+                            <Download size={16} />
+                            Download Result
+                        </Button>
+                    )}
+
+                    {result.verification && (
+                        <Badge variant={getTrustBadgeVariant(result.verification.trust_score)} className="gap-2 px-3 py-1.5 text-sm">
+                            <ShieldCheck size={16} />
+                            Trust: {Math.round(result.verification.trust_score * 100)}%
+                        </Badge>
+                    )}
+                </div>
             </div>
 
             <div className="grid gap-6">

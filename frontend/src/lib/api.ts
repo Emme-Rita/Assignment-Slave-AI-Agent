@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:8001/api/v1',
+    baseURL: 'http://localhost:8000/api/v1',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -31,6 +31,9 @@ export const assignmentApi = {
 
     research: (query: string) =>
         api.post('/research/research', { query }),
+
+    getDownloadUrl: (filename: string) =>
+        `http://localhost:8000/api/v1/download/${filename}`
 };
 
 export default api;

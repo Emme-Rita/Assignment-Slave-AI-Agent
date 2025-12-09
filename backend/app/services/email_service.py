@@ -50,15 +50,6 @@ class EmailService:
             print(f"[`MOCK EMAIL`] To: {recipient} | Subject: {subject} | Attachments: {attachments}")
             return
 
-        message = MessageSchema(
-            subject=subject,
-            recipients=[recipient],
-            body=content,
-            subtype=MessageType.html,
-            attachments=attachments
-        )
-        
-        await self.fastmail.send_message(message)
         try:
             message = MessageSchema(
                 subject=subject,
@@ -85,7 +76,6 @@ class EmailService:
         """
         Send a simple notification via email.
         """
-<<<<<<< HEAD
         if not self.enabled:
             print(f"[`MOCK EMAIL`] To: {recipient} | Subject: {subject}")
             return
@@ -98,8 +88,5 @@ class EmailService:
         )
         
         await self.fastmail.send_message(message)
-=======
-        await self.send_assignment_result(recipient, subject, content)
->>>>>>> da790a06c72ce82f237ad49c9726ece5c80e44dd
 
 email_service = EmailService()
