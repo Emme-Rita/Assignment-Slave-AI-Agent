@@ -61,7 +61,15 @@ class AIService:
             parts.append(f"User Instructions:\n{prompt}")
             
             parts.append("""
-            IMPORTANT: You must return the response in valid JSON format with the following structure:
+            IMPORTANT: Follow these strict instructions:
+            1. You must return the response in valid JSON format with the following structure.
+            2. The content of 'answer' MUST be written in 100% natural, human-like language. 
+            3. Do NOT use phrases like "As an AI", "Based on the provided text", "Here is the solution", "In conclusion". 
+            4. Do NOT mention that you are an AI or that this is an AI-generated response.
+            5. Write directly as if you are a student submitting the work.
+            6. Vary sentence structure and length to avoid AI detection patterns.
+
+            JSON Structure:
             {
                 "id": "unique_id",
                 "title": "Assignment Title",

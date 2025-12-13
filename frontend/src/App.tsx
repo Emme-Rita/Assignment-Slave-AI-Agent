@@ -4,11 +4,10 @@ import { FileUpload } from './components/upload/UploadZone';
 import { AudioPanel } from './components/audio/AudioPanel';
 import { ResultsDisplay } from './components/dashboard/ResultsDisplay';
 import { Button } from './components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from './components/ui/Card';
+import { Card, CardContent } from './components/ui/Card';
 import { Input } from './components/ui/Input';
 import { assignmentApi } from './lib/api';
-import { Wand2, Loader2, BookOpen, GraduationCap, Mail, FileText, Feather, Settings as SettingsIcon, History as HistoryIcon, Search as SearchIcon } from 'lucide-react';
-import { ResearchView } from './components/research/ResearchView';
+import { Wand2, Loader2, BookOpen, GraduationCap, Mail, FileText, Feather, Settings as SettingsIcon } from 'lucide-react';
 import { HistoryView } from './components/history/HistoryView';
 
 function App() {
@@ -19,7 +18,7 @@ function App() {
   const [styleSample, setStyleSample] = useState<File | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [instructions, setInstructions] = useState('');
-  const [enableResearch, setEnableResearch] = useState(true);
+  // Research is now fully automatic and hidden from user control
   const [enableStealth, setEnableStealth] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -42,7 +41,7 @@ function App() {
       if (file) formData.append('file', file);
       if (styleSample) formData.append('style_sample', styleSample);
       formData.append('prompt', instructions || '');
-      formData.append('use_research', enableResearch.toString());
+      formData.append('use_research', 'true'); // Always enable research
       formData.append('stealth_mode', enableStealth.toString());
 
       formData.append('student_level', studentLevel);
@@ -219,21 +218,6 @@ function App() {
 
         <Card>
           <CardContent className="p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={enableResearch}
-                    onChange={(e) => setEnableResearch(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                  <span className="ml-3 text-sm font-medium text-gray-300">Enable Agentic Research</span>
-                </label>
-              </div>
-            </div>
-
             <div className="flex items-center justify-between border-t border-gray-700 pt-3">
               <div className="flex items-center gap-3">
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -305,7 +289,6 @@ function App() {
     <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
       {activeTab === 'dashboard' && renderDashboard()}
       {activeTab === 'upload' && renderDashboard()} {/* Reuse dashboard for upload for now */}
-      {activeTab === 'research' && <ResearchView />}
       {activeTab === 'history' && <HistoryView />}
       {activeTab === 'settings' && renderPlaceholder("System Settings", <SettingsIcon size={40} className="text-primary" />, "Configure API keys, default profiles, and system preferences.")}
     </MainLayout>
