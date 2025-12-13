@@ -11,6 +11,7 @@ import base64
 import json
 import uuid
 import os
+import re
 
 router = APIRouter()
 
@@ -86,9 +87,26 @@ async def analyze_assignment(
 
         # Save to history
         try:
-            response_json = json.loads(response.replace("```json", "").replace("```", "").strip())
-        except:
-            response_json = {"answer": response}
+            # Robust JSON extraction
+            cleaned_response = response.replace("```json", "").replace("```", "").strip()
+            response_json = json.loads(cleaned_response)
+        except json.JSONDecodeError:
+            try:
+                # Try to find JSON object with regex
+                match = re.search(r'\{.*\}', response, re.DOTALL)
+                if match:
+                    response_json = json.loads(match.group())
+                else:
+                    raise Exception("No JSON found")
+            except:
+                # Fallback structure
+                response_json = {
+                    "answer": response,
+                    "title": "Analysis Result",
+                    "question": prompt or "Assignment Analysis",
+                    "summary": "See answer",
+                    "note": "Could not parse structured response"
+                }
             
         # Merge verification data
         if verification_result:
@@ -204,24 +222,31 @@ async def submit_assignment(
             # Clean up potential markdown formatting
             cleaned_response = ai_response_text.replace("```json", "").replace("```", "").strip()
             response_data = json.loads(cleaned_response)
-            
-            # Ensure ID is present
-            if "id" not in response_data or not response_data["id"]:
-                response_data["id"] = str(uuid.uuid4())
-                
-            return response_data
-            
         except json.JSONDecodeError:
-            # Fallback if AI didn't return valid JSON
-            response_data = {
-                "id": str(uuid.uuid4()),
-                "title": "Assignment Response",
-                "question": "Could not parse question",
-                "answer": ai_response_text,
-                "summary": "See answer",
-                "note": "Response was not in expected JSON format",
-                "more": ""
-            }
+            try:
+                 # Try to find JSON object with regex
+                match = re.search(r'\{.*\}', ai_response_text, re.DOTALL)
+                if match:
+                    response_data = json.loads(match.group())
+                else:
+                    raise Exception("No JSON found")
+            except:
+                # Fallback if AI didn't return valid JSON
+                response_data = {
+                    "id": str(uuid.uuid4()),
+                    "title": "Assignment Response",
+                    "question": "Could not parse question",
+                    "answer": ai_response_text,
+                    "summary": "See answer",
+                    "note": "Response was not in expected JSON format",
+                    "more": ""
+                }
+            
+        # Ensure ID is present
+        if "id" not in response_data or not response_data["id"]:
+            response_data["id"] = str(uuid.uuid4())
+            
+        return response_data
             
         # Save to Database
         try:
@@ -350,15 +375,25 @@ async def execute_assignment(
         )
 
         # Parse AI Response
+        # Parse AI Response
         try:
             cleaned_response = ai_response_text.replace("```json", "").replace("```", "").strip()
             response_json = json.loads(cleaned_response)
-            answer_text = response_json.get("answer", ai_response_text)
-            title = response_json.get("title", "Assignment Submission")
-        except:
-            response_json = {"answer": ai_response_text}
-            answer_text = ai_response_text
-            title = "Assignment Submission"
+        except json.JSONDecodeError:
+            try:
+                match = re.search(r'\{.*\}', ai_response_text, re.DOTALL)
+                if match:
+                    response_json = json.loads(match.group())
+                else:
+                    raise Exception("No JSON found")
+            except:
+                response_json = {"answer": ai_response_text}
+
+        # Extract fields for processing
+        answer_text = response_json.get("answer", ai_response_text)
+        title = response_json.get("title", "Assignment Submission")
+        question = response_json.get("question", "")
+        summary = response_json.get("summary", "")
 
         # 4. Stealth Mode (Humanization)
         if stealth_mode:
@@ -377,10 +412,21 @@ async def execute_assignment(
         filename = f"{uuid.uuid4()}.{submission_format}"
         
         try:
+            # Construct Formatted Document Content
+            document_content = f"Title: {title}\n"
+            if question:
+                document_content += f"\nQuestion / Topic:\n{question}\n"
+            
+            document_content += f"\n{'-'*20}\n"
+            document_content += f"\nAnswer:\n\n{answer_text}\n"
+            
+            if summary:
+                document_content += f"\n{'-'*20}\nSummary:\n{summary}\n"
+
             if submission_format.lower() == 'pdf':
-                generated_file_path = file_service.generate_pdf(answer_text, filename)
+                generated_file_path = file_service.generate_pdf(document_content, filename)
             else:
-                generated_file_path = file_service.generate_docx(answer_text, filename)
+                generated_file_path = file_service.generate_docx(document_content, filename)
         except Exception as e:
             # File generation failed
             pass
