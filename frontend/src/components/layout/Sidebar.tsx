@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, Search, History, Settings } from 'lucide-react';
+import { LayoutDashboard, FileText, History, Settings } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface SidebarProps {
@@ -10,7 +10,6 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard', color: 'text-primary-light', hoverBg: 'hover:bg-primary/10', activeBg: 'bg-primary/10' },
         { icon: FileText, label: 'Upload Assignment', id: 'upload', color: 'text-success-light', hoverBg: 'hover:bg-success/10', activeBg: 'bg-success/10' },
-        { icon: Search, label: 'Research', id: 'research', color: 'text-accent-purple', hoverBg: 'hover:bg-accent-purple/10', activeBg: 'bg-accent-purple/10' },
         { icon: History, label: 'History', id: 'history', color: 'text-warning-light', hoverBg: 'hover:bg-warning/10', activeBg: 'bg-warning/10' },
     ];
 

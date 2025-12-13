@@ -18,7 +18,7 @@ router = APIRouter()
 async def analyze_assignment(
     file: Optional[UploadFile] = File(None),
     prompt: Optional[str] = Form(None),
-    use_research: bool = Form(False)
+    use_research: bool = Form(True)
 ):
     """
     Analyze an assignment with AI assistance.
