@@ -246,23 +246,20 @@ async def submit_assignment(
         if "id" not in response_data or not response_data["id"]:
             response_data["id"] = str(uuid.uuid4())
             
-        return response_data
-            
-        # Save to Database
-        try:
-            conversation_entry = Conversation(
-                id=response_data.get("id"),
-                title=response_data.get("title", "New Conversation"),
-                prompt=final_prompt,
-                file_name=assignment_file.filename if assignment_file else None,
-                response_json=json.dumps(response_data),
-            )
-            db.add(conversation_entry)
-            db.commit()
-            db.refresh(conversation_entry)
-        except Exception as e:
-            print(f"Error saving to DB: {e}")
-            # Don't fail the request if DB save fails, just log it
+        # Save to history
+        await history_service.save_execution({
+            "prompt": final_prompt,
+            "student_level": "University", # Default
+            "department": "General", # Default
+            "submission_format": "text",
+            "use_research": True, # Implied from logic
+            "stealth_mode": False,
+            "style_mirrored": False,
+            "email_sent": False,
+            "file_generated": None,
+            "research_context": context,
+            "result": response_data
+        })
             
         return response_data
 
