@@ -406,7 +406,29 @@ async def execute_assignment(
 
         # 5. Formatting Phase
         generated_file_path = None
-        filename = f"{uuid.uuid4()}.{submission_format}"
+        
+        # Determine meaningful filename
+        sanitized_title = "assignment"
+        if title:
+            # lower case, strip whitespace
+            clean_name = title.lower().strip()
+            # replace spaces with underscores
+            clean_name = re.sub(r'\s+', '_', clean_name)
+            # remove non-alphanumeric (keep underscores)
+            clean_name = re.sub(r'[^\w_]', '', clean_name)
+            # truncate to 50 chars
+            sanitized_title = clean_name[:50]
+        elif prompt:
+             # Fallback to prompt words
+             clean_name = prompt.lower().strip().split()[:5] # first 5 words
+             sanitized_title = "_".join(clean_name)
+             sanitized_title = re.sub(r'[^\w_]', '', sanitized_title)
+
+        # Ensure we have a valid string, else UUID
+        if not sanitized_title:
+             sanitized_title = str(uuid.uuid4())
+             
+        filename = f"{sanitized_title}.{submission_format}"
         
         try:
             # Construct Formatted Document Content
@@ -447,12 +469,19 @@ async def execute_assignment(
         if whatsapp:
             try:
                 from app.services.whatsapp_service import whatsapp_service
-                msg = f"Assignment Slave: Your task '{title}' is complete!\nResult has been generated ({submission_format}).\nConfidence: High."
-                if email_sent:
-                    msg += f"\nFull document sent to {email}."
+                # Message styling: Student submission
+                caption = f"Here is the assignment '{title}'."
+                if student_level:
+                    caption += f" (Level: {student_level})"
                 
-                await whatsapp_service.send_notification(whatsapp, msg)
-                whatsapp_sent = True
+                if generated_file_path:
+                    # Send the actual file
+                    await whatsapp_service.send_file(whatsapp, generated_file_path, caption)
+                    whatsapp_sent = True
+                else:
+                    # Fallback to text if no file generated
+                    await whatsapp_service.send_notification(whatsapp, caption + "\n[Answer provided in text]")
+                    whatsapp_sent = True
             except Exception as e:
                 print(f"WhatsApp error: {e}")
 
