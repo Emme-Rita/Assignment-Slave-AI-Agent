@@ -9,6 +9,7 @@ import { Input } from './components/ui/Input';
 import { assignmentApi } from './lib/api';
 import { Wand2, Loader2, BookOpen, GraduationCap, Mail, FileText, Feather, Settings as SettingsIcon } from 'lucide-react';
 import { HistoryView } from './components/history/HistoryView';
+import { SettingsView } from './components/settings/SettingsView';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -19,20 +20,16 @@ function App() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [instructions, setInstructions] = useState('');
   // Research is now fully automatic and hidden from user control
-  const [enableStealth, setEnableStealth] = useState(true);
+  const [enableStealth, setEnableStealth] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
 
-  // Execution Fields
-  const [educationCategory, setEducationCategory] = useState('University');
-  const [studentLevel, setStudentLevel] = useState('Level 100');
-  const [department, setDepartment] = useState('Computer Science');
-  const [submissionFormat, setSubmissionFormat] = useState('docx');
+  // Execution Fields - Init with defaults
+  const [studentLevel, setStudentLevel] = useState(() => localStorage.getItem('default_student_level') || 'University');
+  const [department, setDepartment] = useState(() => localStorage.getItem('default_department') || 'Computer Science');
+  const [submissionFormat, setSubmissionFormat] = useState(() => localStorage.getItem('default_submission_format') || 'docx');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [studentName, setStudentName] = useState('');
-  const [matriculeNumber, setMatriculeNumber] = useState('');
-  const [schoolName, setSchoolName] = useState('');
 
   const handleAnalyze = async () => {
     if (!file && !instructions && !audioBlob) return;
@@ -53,9 +50,6 @@ function App() {
       formData.append('submission_format', submissionFormat);
       if (email) formData.append('email', email);
       if (whatsapp) formData.append('whatsapp', whatsapp);
-      if (studentName) formData.append('student_name', studentName);
-      if (matriculeNumber) formData.append('matricule_number', matriculeNumber);
-      if (schoolName) formData.append('school_name', schoolName);
 
       if (audioBlob) {
         const audioFile = new File([audioBlob], "voice_note.webm", { type: 'audio/webm' });
@@ -106,109 +100,40 @@ function App() {
       {/* Left Column: Inputs */}
       <div className="lg:col-span-2 space-y-6">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-white">New Assignment Task</h1>
+          <h1 className="text-3xl font-bold text-white dark:text-white text-navy-900">New Assignment Task</h1>
           <p className="text-gray-400">Configure your autonomous agent to handle your assignment.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="md:col-span-2">
-            <CardContent className="p-4 space-y-4">
-              {/* Header for the card */}
-              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2 mb-2">
-                <GraduationCap className="w-4 h-4 text-primary" /> Student Profile
+          <Card>
+            <CardContent className="p-4 space-y-2">
+              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-primary" /> Student Level
               </label>
+              <select
+                value={studentLevel}
+                onChange={(e) => setStudentLevel(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-white/10 bg-navy-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ring-offset-navy-900"
+              >
+                <option value="High School">High School</option>
+                <option value="University">University (Undergrad)</option>
+                <option value="Masters">Master's</option>
+                <option value="PhD">PhD</option>
+              </select>
+            </CardContent>
+          </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Name */}
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Full Name</label>
-                  <Input
-                    type="text"
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    placeholder="e.g. John Doe"
-                  />
-                </div>
-
-                {/* Matricule */}
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Matricule No.</label>
-                  <Input
-                    type="text"
-                    value={matriculeNumber}
-                    onChange={(e) => setMatriculeNumber(e.target.value)}
-                    placeholder="e.g. FE12A345"
-                  />
-                </div>
-
-                {/* School Name */}
-                <div className="space-y-1 md:col-span-2">
-                  <label className="text-xs text-gray-400">School / University Name</label>
-                  <Input
-                    type="text"
-                    value={schoolName}
-                    onChange={(e) => setSchoolName(e.target.value)}
-                    placeholder="e.g. University of Buea"
-                  />
-                </div>
-
-                {/* Category */}
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Education Category</label>
-                  <select
-                    value={educationCategory}
-                    onChange={(e) => {
-                      setEducationCategory(e.target.value);
-                      // Reset level default when category changes
-                      if (e.target.value === 'University') setStudentLevel('Level 100');
-                      else setStudentLevel('Lower Sixth');
-                    }}
-                    className="flex h-10 w-full rounded-md border border-white/10 bg-navy-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ring-offset-navy-900"
-                  >
-                    <option value="University">University</option>
-                    <option value="Secondary">Secondary School (High School)</option>
-                  </select>
-                </div>
-
-                {/* Level */}
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Level</label>
-                  <select
-                    value={studentLevel}
-                    onChange={(e) => setStudentLevel(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-white/10 bg-navy-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ring-offset-navy-900"
-                  >
-                    {educationCategory === 'University' ? (
-                      <>
-                        <option value="Level 100">Level 100</option>
-                        <option value="Level 200">Level 200</option>
-                        <option value="Level 300">Level 300</option>
-                        <option value="Level 400">Level 400</option>
-                        <option value="Masters 1">Masters 1</option>
-                        <option value="Masters 2">Masters 2</option>
-                        <option value="PhD">PhD</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="Form 5">Form 5</option>
-                        <option value="Lower Sixth">Lower Sixth</option>
-                        <option value="Upper Sixth">Upper Sixth</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-
-                {/* Department */}
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Department</label>
-                  <Input
-                    type="text"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="e.g. Computer Science"
-                  />
-                </div>
-              </div>
+          <Card>
+            <CardContent className="p-4 space-y-2">
+              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-primary" /> Department
+              </label>
+              <Input
+                type="text"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="e.g. Computer Science, History"
+              />
             </CardContent>
           </Card>
 
@@ -292,7 +217,27 @@ function App() {
 
         <AudioPanel onAudioReady={setAudioBlob} />
 
-
+        <Card>
+          <CardContent className="p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between border-t border-gray-700 pt-3">
+              <div className="flex items-center gap-3">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={enableStealth}
+                    onChange={(e) => setEnableStealth(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-500/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                  <span className="ml-3 text-sm font-medium text-red-400 flex items-center gap-2">
+                    Activate Stealth Mode (Humanizer)
+                    <span className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full border border-red-500/30">Bypass Detectors</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Button
           onClick={handleAnalyze}
@@ -326,27 +271,12 @@ function App() {
     </div>
   );
 
-  const renderPlaceholder = (title: string, icon: React.ReactNode, message: string) => (
-    <Card className="max-w-2xl mx-auto mt-20">
-      <CardContent className="p-12 text-center">
-        <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-          {icon}
-        </div>
-        <h1 className="text-3xl font-bold text-white mb-4">{title}</h1>
-        <p className="text-gray-400 mb-8">{message}</p>
-        <Button onClick={() => setActiveTab('dashboard')} className="mx-auto">
-          Return to Dashboard
-        </Button>
-      </CardContent>
-    </Card>
-  );
-
   return (
     <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
       {activeTab === 'dashboard' && renderDashboard()}
       {activeTab === 'upload' && renderDashboard()} {/* Reuse dashboard for upload for now */}
       {activeTab === 'history' && <HistoryView />}
-      {activeTab === 'settings' && renderPlaceholder("System Settings", <SettingsIcon size={40} className="text-primary" />, "Configure API keys, default profiles, and system preferences.")}
+      {activeTab === 'settings' && <SettingsView />}
     </MainLayout>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { History, Trash2, Eye, Calendar, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { History, Trash2, Eye, Calendar, FileText, CheckCircle, XCircle, Download } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
@@ -85,33 +85,33 @@ export function HistoryView() {
     return (
         <div className="space-y-6">
             <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-white">Assignment History</h1>
-                <p className="text-gray-400">View and manage past assignment executions</p>
+                <h1 className="text-3xl font-bold text-foreground">Assignment History</h1>
+                <p className="text-muted-foreground">View and manage past assignment executions</p>
             </div>
 
             {isLoading ? (
                 <Card className="p-12 text-center bg-transparent border-dashed">
-                    <p className="text-gray-400">Loading history...</p>
+                    <p className="text-muted-foreground">Loading history...</p>
                 </Card>
             ) : records.length === 0 ? (
                 <Card className="p-12 text-center border-dashed bg-transparent">
-                    <History size={48} className="mx-auto mb-4 text-gray-600" />
-                    <h3 className="text-xl font-semibold text-white mb-2">No History Yet</h3>
-                    <p className="text-gray-400">Your executed assignments will appear here</p>
+                    <History size={48} className="mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-xl font-semibold text-foreground mb-2">No History Yet</h3>
+                    <p className="text-muted-foreground">Your executed assignments will appear here</p>
                 </Card>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* List of records */}
                     <div className="lg:col-span-2 space-y-4">
                         {records.map((record) => (
-                            <Card key={record.id} className="hover:bg-navy-700/50 transition-colors group">
+                            <Card key={record.id} className="hover:bg-accent/50 transition-colors group">
                                 <CardContent className="p-4 flex items-start justify-between">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-2">
-                                            <Calendar size={14} className="text-gray-500" />
-                                            <span className="text-xs text-gray-500 font-medium">{formatDate(record.timestamp)}</span>
+                                            <Calendar size={14} className="text-muted-foreground" />
+                                            <span className="text-xs text-muted-foreground font-medium">{formatDate(record.timestamp)}</span>
                                         </div>
-                                        <p className="text-white font-medium mb-3 line-clamp-2">{record.prompt}</p>
+                                        <p className="text-foreground font-medium mb-3 line-clamp-2">{record.prompt}</p>
                                         <div className="flex flex-wrap gap-2">
                                             <Badge variant="secondary">{record.student_level}</Badge>
                                             <Badge variant="secondary">{record.department}</Badge>
@@ -136,7 +136,7 @@ export function HistoryView() {
                                         <Button
                                             variant="ghost"
                                             onClick={() => deleteRecord(record.id)}
-                                            className="h-8 w-8 p-0 hover:text-red-400"
+                                            className="h-8 w-8 p-0 hover:text-destructive"
                                             title="Delete"
                                         >
                                             <Trash2 size={16} />
@@ -152,35 +152,50 @@ export function HistoryView() {
                         {selectedRecord ? (
                             <Card className="sticky top-6">
                                 <CardContent className="p-6 space-y-4">
-                                    <h3 className="text-xl font-bold text-white mb-4">Details</h3>
+                                    <h3 className="text-xl font-bold text-foreground mb-4">Details</h3>
                                     {selectedRecord.result && (
                                         <>
                                             <div>
-                                                <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-1">Title</h4>
-                                                <p className="text-white">{selectedRecord.result.title || 'N/A'}</p>
+                                                <h4 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1">Title</h4>
+                                                <p className="text-foreground">{selectedRecord.result.title || 'N/A'}</p>
                                             </div>
                                             <div>
-                                                <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-1">Question</h4>
-                                                <p className="text-gray-300 text-sm leading-relaxed">{selectedRecord.result.question || 'N/A'}</p>
+                                                <h4 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1">Question</h4>
+                                                <p className="text-muted-foreground text-sm leading-relaxed">{selectedRecord.result.question || 'N/A'}</p>
                                             </div>
                                             <div>
-                                                <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-1">Summary</h4>
-                                                <p className="text-gray-300 text-sm leading-relaxed">{selectedRecord.result.summary || 'N/A'}</p>
+                                                <h4 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1">Summary</h4>
+                                                <p className="text-muted-foreground text-sm leading-relaxed">{selectedRecord.result.summary || 'N/A'}</p>
                                             </div>
                                             {selectedRecord.research_context && (
                                                 <div>
-                                                    <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-1 text-blue-400">Research Context</h4>
-                                                    <div className="bg-navy-900/50 p-3 rounded-lg border border-white/5">
-                                                        <p className="text-blue-100/80 text-xs leading-relaxed max-h-40 overflow-y-auto custom-scrollbar">
+                                                    <h4 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1 text-blue-400">Research Context</h4>
+                                                    <div className="bg-muted p-3 rounded-lg border border-border">
+                                                        <p className="text-blue-500/80 text-xs leading-relaxed max-h-40 overflow-y-auto custom-scrollbar">
                                                             {selectedRecord.research_context}
                                                         </p>
                                                     </div>
                                                 </div>
                                             )}
                                             {selectedRecord.file_generated && (
-                                                <div className="pt-4 border-t border-white/10 flex items-center gap-2">
-                                                    <FileText size={16} className="text-primary" />
-                                                    <span className="text-sm text-gray-400">File Generated</span>
+                                                <div className="pt-4 border-t border-border flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <FileText size={16} className="text-primary" />
+                                                        <span className="text-sm text-muted-foreground">File Generated</span>
+                                                    </div>
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="text-primary hover:text-primary/80 hover:bg-primary/10 h-8 gap-2"
+                                                        onClick={() => {
+                                                            const filename = selectedRecord.file_generated!.split(/[/\\]/).pop();
+                                                            if (filename) {
+                                                                window.open(assignmentApi.getDownloadUrl(filename), '_blank');
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Download size={14} />
+                                                        Download
+                                                    </Button>
                                                 </div>
                                             )}
                                             <Button
@@ -195,9 +210,9 @@ export function HistoryView() {
                                 </CardContent>
                             </Card>
                         ) : (
-                            <div className="border border-white/5 rounded-xl p-12 text-center sticky top-6 border-dashed">
-                                <Eye size={48} className="mx-auto mb-4 text-gray-700" />
-                                <p className="text-gray-500 text-sm">Select a record to view details</p>
+                            <div className="border border-border rounded-xl p-12 text-center sticky top-6 border-dashed">
+                                <Eye size={48} className="mx-auto mb-4 text-muted-foreground" />
+                                <p className="text-muted-foreground text-sm">Select a record to view details</p>
                             </div>
                         )}
                     </div>

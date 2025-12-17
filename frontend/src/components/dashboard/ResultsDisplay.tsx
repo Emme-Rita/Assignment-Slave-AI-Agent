@@ -73,12 +73,12 @@ export function ResultsDisplay({ result, isLoading }: ResultsDisplayProps) {
                     <div className="p-2 bg-primary/20 text-primary-light rounded-lg">
                         <Bot size={24} />
                     </div>
-                    <h2 className="text-xl font-bold text-white">Analysis Results</h2>
+                    <h2 className="text-xl font-bold text-foreground">Analysis Results</h2>
                 </div>
 
                 <div className="flex items-center gap-2">
                     {result.file_generated && (
-                        <Button variant="secondary" size="sm" onClick={handleDownload} className="gap-2 bg-navy-800 border border-white/10 hover:bg-navy-700">
+                        <Button variant="secondary" size="sm" onClick={handleDownload} className="gap-2 bg-secondary border border-border hover:bg-secondary/80">
                             <Download size={16} />
                             Download Result
                         </Button>
@@ -105,19 +105,21 @@ export function ResultsDisplay({ result, isLoading }: ResultsDisplayProps) {
                 <Card className="border-primary/30 shadow-primary/10">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-lg">
-                            <CheckCircle className="text-green-400" size={20} />
+                            <CheckCircle className="text-green-500" size={20} />
                             Solution
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="prose prose-invert max-w-none text-gray-300">
-                            {result.answer}
+                        <div className="prose dark:prose-invert prose-slate max-w-none">
+                            {result.answer.split('\n').map((line, i) => (
+                                <p key={i} className="mb-2">{line}</p>
+                            ))}
                         </div>
                     </CardContent>
                 </Card>
 
                 {result.verification && result.verification.claims.length > 0 && (
-                    <Card className="border-white/10">
+                    <Card className="border-border">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <BookOpen className="text-blue-400" size={20} />
@@ -126,9 +128,9 @@ export function ResultsDisplay({ result, isLoading }: ResultsDisplayProps) {
                         </CardHeader>
                         <CardContent className="space-y-3">
                             {result.verification.claims.map((claim, idx) => (
-                                <div key={idx} className="p-3 bg-white/5 rounded border border-white/5">
+                                <div key={idx} className="p-3 bg-muted/50 rounded border border-border">
                                     <div className="flex items-start justify-between gap-4">
-                                        <p className="text-sm text-gray-200">{claim.claim}</p>
+                                        <p className="text-sm text-foreground">{claim.claim}</p>
                                         <Badge variant={
                                             claim.status === 'Supported' ? 'success' :
                                                 claim.status === 'Contradicted' ? 'destructive' : 'secondary'
@@ -137,7 +139,7 @@ export function ResultsDisplay({ result, isLoading }: ResultsDisplayProps) {
                                         </Badge>
                                     </div>
                                     {claim.reasoning && (
-                                        <p className="text-xs text-gray-400 mt-2 pl-2 border-l-2 border-white/10">
+                                        <p className="text-xs text-muted-foreground mt-2 pl-2 border-l-2 border-border">
                                             {claim.reasoning}
                                         </p>
                                     )}

@@ -34,7 +34,7 @@ class EmailService:
             )
             self.fastmail = FastMail(self.conf)
         else:
-            print("Email Service: Disabled. Please set MAIL_USERNAME and MAIL_PASSWORD in .env for Gmail.")
+            print("Email Service: Disabled (Missing Credentials). Emails will be mocked.")
     
     async def send_assignment_result(
         self,

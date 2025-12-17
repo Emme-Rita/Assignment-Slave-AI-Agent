@@ -189,7 +189,7 @@ async def submit_assignment(
             }
         
         # Construct Prompt
-        final_prompt = prompt if prompt else "Please analyze this assignment and provide a solution."
+        final_prompt = prompt if prompt else "Analyze the uploaded file and provide a complete solution for every question or task present. Do not summarize; solve everything."
         if voice:
             final_prompt += " (See audio instructions)"
             
@@ -277,9 +277,6 @@ async def execute_assignment(
     prompt: str = Form(...),
     student_level: str = Form("University"),
     department: str = Form("General"),
-    student_name: Optional[str] = Form(None),
-    matricule_number: Optional[str] = Form(None),
-    school_name: Optional[str] = Form(None),
     submission_format: str = Form("docx"),
     email: Optional[str] = Form(None),
     whatsapp: Optional[str] = Form(None),
@@ -345,7 +342,7 @@ async def execute_assignment(
             voice_bytes = await voice.read()
             audio_data = {"data": voice_bytes, "mime_type": voice.content_type or "audio/mp3"}
 
-        final_prompt = prompt if prompt else "Please solve this assignment."
+        final_prompt = prompt if prompt else "Analyze the uploaded file and provide a complete solution for every question or task present. Do not summarize; solve everything."
         if voice: final_prompt += " (audio included)"
         
         # 2. Research Phase
@@ -377,15 +374,7 @@ async def execute_assignment(
         # Parse AI Response
         # Parse AI Response
         try:
-            # Safer cleanup: Strip ONLY the outer ```json ... ``` wrapper
-            # This preserves inner backticks used for code blocks or diagrams
-            cleaned_response = ai_response_text.strip()
-            if cleaned_response.startswith("```"):
-                # Remove first line (```json)
-                cleaned_response = re.sub(r'^```[a-zA-Z]*\n', '', cleaned_response)
-                # Remove last line (```)
-                cleaned_response = re.sub(r'```$', '', cleaned_response.strip())
-            
+            cleaned_response = ai_response_text.replace("```json", "").replace("```", "").strip()
             response_json = json.loads(cleaned_response)
         except json.JSONDecodeError:
             try:
@@ -417,47 +406,24 @@ async def execute_assignment(
 
         # 5. Formatting Phase
         generated_file_path = None
-        
-        # Determine meaningful filename
-        sanitized_title = "assignment"
-        if title:
-            # lower case, strip whitespace
-            clean_name = title.lower().strip()
-            # replace spaces with underscores
-            clean_name = re.sub(r'\s+', '_', clean_name)
-            # remove non-alphanumeric (keep underscores)
-            clean_name = re.sub(r'[^\w_]', '', clean_name)
-            # truncate to 50 chars
-            sanitized_title = clean_name[:50]
-        elif prompt:
-             # Fallback to prompt words
-             clean_name = prompt.lower().strip().split()[:5] # first 5 words
-             sanitized_title = "_".join(clean_name)
-             sanitized_title = re.sub(r'[^\w_]', '', sanitized_title)
-
-        # Ensure we have a valid string, else UUID
-        if not sanitized_title:
-             sanitized_title = str(uuid.uuid4())
-             
-        filename = f"{sanitized_title}.{submission_format}"
+        filename = f"{uuid.uuid4()}.{submission_format}"
         
         try:
             # Construct Formatted Document Content
-            document_content = f"{answer_text}\n"
+            document_content = f"Title: {title}\n"
+            if question:
+                document_content += f"\nQuestion / Topic:\n{question}\n"
             
-            # Prepare student info dict
-            student_info = {
-                "name": student_name,
-                "matricule": matricule_number,
-                "school": school_name,
-                "level": student_level,
-                "department": department
-            }
+            document_content += f"\n{'-'*20}\n"
+            document_content += f"\nAnswer:\n\n{answer_text}\n"
+            
+            if summary:
+                document_content += f"\n{'-'*20}\nSummary:\n{summary}\n"
 
             if submission_format.lower() == 'pdf':
                 generated_file_path = file_service.generate_pdf(document_content, filename)
             else:
-                generated_file_path = file_service.generate_docx(document_content, filename, student_info=student_info)
+                generated_file_path = file_service.generate_docx(document_content, filename)
         except Exception as e:
             # File generation failed
             pass
@@ -481,19 +447,12 @@ async def execute_assignment(
         if whatsapp:
             try:
                 from app.services.whatsapp_service import whatsapp_service
-                # Message styling: Student submission
-                caption = f"Here is the assignment '{title}'."
-                if student_level:
-                    caption += f" (Level: {student_level})"
+                msg = f"Assignment Slave: Your task '{title}' is complete!\nResult has been generated ({submission_format}).\nConfidence: High."
+                if email_sent:
+                    msg += f"\nFull document sent to {email}."
                 
-                if generated_file_path:
-                    # Send the actual file
-                    await whatsapp_service.send_file(whatsapp, generated_file_path, caption)
-                    whatsapp_sent = True
-                else:
-                    # Fallback to text if no file generated
-                    await whatsapp_service.send_notification(whatsapp, caption + "\n[Answer provided in text]")
-                    whatsapp_sent = True
+                await whatsapp_service.send_notification(whatsapp, msg)
+                whatsapp_sent = True
             except Exception as e:
                 print(f"WhatsApp error: {e}")
 

@@ -14,7 +14,7 @@ class Settings:
     MAIL_PASSWORD: str = os.getenv("MAIL_PASSWORD", "")
     MAIL_FROM: str = os.getenv("MAIL_FROM", "test@example.com")
     MAIL_PORT: int = int(os.getenv("MAIL_PORT", 587))
-    MAIL_SERVER: str = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+    MAIL_SERVER: str = os.getenv("MAIL_SERVER", "")
     
     # WhatsApp Settings
     WHATSAPP_API_TOKEN: str = os.getenv("WHATSAPP_API_TOKEN", "")
