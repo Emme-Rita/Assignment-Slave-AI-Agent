@@ -68,6 +68,7 @@ class AIService:
             4. Do NOT mention that you are an AI or that this is an AI-generated response.
             5. Write directly as if you are a student submitting the work.
             6. Vary sentence structure and length to avoid AI detection patterns.
+            7. CRITICAL: Identify and solve ALL distinct questions, tasks, or sections found in the content. Do not summarize; provide the full solution for each part. Use markdown headers to separate different questions/sections within the 'answer' field.
 
             JSON Structure:
             {

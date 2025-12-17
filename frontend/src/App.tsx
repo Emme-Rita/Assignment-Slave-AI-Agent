@@ -9,6 +9,7 @@ import { Input } from './components/ui/Input';
 import { assignmentApi } from './lib/api';
 import { Wand2, Loader2, BookOpen, GraduationCap, Mail, FileText, Feather, Settings as SettingsIcon } from 'lucide-react';
 import { HistoryView } from './components/history/HistoryView';
+import { SettingsView } from './components/settings/SettingsView';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -23,10 +24,10 @@ function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
 
-  // Execution Fields
-  const [studentLevel, setStudentLevel] = useState('University');
-  const [department, setDepartment] = useState('Computer Science');
-  const [submissionFormat, setSubmissionFormat] = useState('docx');
+  // Execution Fields - Init with defaults
+  const [studentLevel, setStudentLevel] = useState(() => localStorage.getItem('default_student_level') || 'University');
+  const [department, setDepartment] = useState(() => localStorage.getItem('default_department') || 'Computer Science');
+  const [submissionFormat, setSubmissionFormat] = useState(() => localStorage.getItem('default_submission_format') || 'docx');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
 
@@ -99,7 +100,7 @@ function App() {
       {/* Left Column: Inputs */}
       <div className="lg:col-span-2 space-y-6">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-white">New Assignment Task</h1>
+          <h1 className="text-3xl font-bold text-white dark:text-white text-navy-900">New Assignment Task</h1>
           <p className="text-gray-400">Configure your autonomous agent to handle your assignment.</p>
         </div>
 
@@ -270,27 +271,12 @@ function App() {
     </div>
   );
 
-  const renderPlaceholder = (title: string, icon: React.ReactNode, message: string) => (
-    <Card className="max-w-2xl mx-auto mt-20">
-      <CardContent className="p-12 text-center">
-        <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-          {icon}
-        </div>
-        <h1 className="text-3xl font-bold text-white mb-4">{title}</h1>
-        <p className="text-gray-400 mb-8">{message}</p>
-        <Button onClick={() => setActiveTab('dashboard')} className="mx-auto">
-          Return to Dashboard
-        </Button>
-      </CardContent>
-    </Card>
-  );
-
   return (
     <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
       {activeTab === 'dashboard' && renderDashboard()}
       {activeTab === 'upload' && renderDashboard()} {/* Reuse dashboard for upload for now */}
       {activeTab === 'history' && <HistoryView />}
-      {activeTab === 'settings' && renderPlaceholder("System Settings", <SettingsIcon size={40} className="text-primary" />, "Configure API keys, default profiles, and system preferences.")}
+      {activeTab === 'settings' && <SettingsView />}
     </MainLayout>
   );
 }

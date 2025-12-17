@@ -189,7 +189,7 @@ async def submit_assignment(
             }
         
         # Construct Prompt
-        final_prompt = prompt if prompt else "Please analyze this assignment and provide a solution."
+        final_prompt = prompt if prompt else "Analyze the uploaded file and provide a complete solution for every question or task present. Do not summarize; solve everything."
         if voice:
             final_prompt += " (See audio instructions)"
             
@@ -342,7 +342,7 @@ async def execute_assignment(
             voice_bytes = await voice.read()
             audio_data = {"data": voice_bytes, "mime_type": voice.content_type or "audio/mp3"}
 
-        final_prompt = prompt if prompt else "Please solve this assignment."
+        final_prompt = prompt if prompt else "Analyze the uploaded file and provide a complete solution for every question or task present. Do not summarize; solve everything."
         if voice: final_prompt += " (audio included)"
         
         # 2. Research Phase
