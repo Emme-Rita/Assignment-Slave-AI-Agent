@@ -277,6 +277,9 @@ async def execute_assignment(
     prompt: str = Form(...),
     student_level: str = Form("University"),
     department: str = Form("General"),
+    student_name: Optional[str] = Form(None),
+    matricule_number: Optional[str] = Form(None),
+    school_name: Optional[str] = Form(None),
     submission_format: str = Form("docx"),
     email: Optional[str] = Form(None),
     whatsapp: Optional[str] = Form(None),
@@ -374,7 +377,15 @@ async def execute_assignment(
         # Parse AI Response
         # Parse AI Response
         try:
-            cleaned_response = ai_response_text.replace("```json", "").replace("```", "").strip()
+            # Safer cleanup: Strip ONLY the outer ```json ... ``` wrapper
+            # This preserves inner backticks used for code blocks or diagrams
+            cleaned_response = ai_response_text.strip()
+            if cleaned_response.startswith("```"):
+                # Remove first line (```json)
+                cleaned_response = re.sub(r'^```[a-zA-Z]*\n', '', cleaned_response)
+                # Remove last line (```)
+                cleaned_response = re.sub(r'```$', '', cleaned_response.strip())
+            
             response_json = json.loads(cleaned_response)
         except json.JSONDecodeError:
             try:
@@ -432,20 +443,21 @@ async def execute_assignment(
         
         try:
             # Construct Formatted Document Content
-            document_content = f"Title: {title}\n"
-            if question:
-                document_content += f"\nQuestion / Topic:\n{question}\n"
+            document_content = f"{answer_text}\n"
             
-            document_content += f"\n{'-'*20}\n"
-            document_content += f"\nAnswer:\n\n{answer_text}\n"
-            
-            if summary:
-                document_content += f"\n{'-'*20}\nSummary:\n{summary}\n"
+            # Prepare student info dict
+            student_info = {
+                "name": student_name,
+                "matricule": matricule_number,
+                "school": school_name,
+                "level": student_level,
+                "department": department
+            }
 
             if submission_format.lower() == 'pdf':
                 generated_file_path = file_service.generate_pdf(document_content, filename)
             else:
-                generated_file_path = file_service.generate_docx(document_content, filename)
+                generated_file_path = file_service.generate_docx(document_content, filename, student_info=student_info)
         except Exception as e:
             # File generation failed
             pass
