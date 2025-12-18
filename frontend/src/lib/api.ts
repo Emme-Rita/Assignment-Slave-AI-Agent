@@ -33,16 +33,7 @@ export const assignmentApi = {
         api.post('/research/research', { query }),
 
     getDownloadUrl: (filename: string) =>
-        `http://localhost:8000/api/v1/download/${filename}`,
-
-    getHistory: (limit: number = 50) =>
-        api.get(`/history?limit=${limit}`),
-
-    getHistoryDetails: (recordId: string) =>
-        api.get(`/history/${recordId}`),
-
-    deleteHistory: (recordId: string) =>
-        api.delete(`/history/${recordId}`)
+        `http://localhost:8000/api/v1/download/${filename}`
 };
 
 export default api;

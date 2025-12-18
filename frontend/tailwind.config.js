@@ -4,52 +4,18 @@ export default {
         "./index.html",
         "./src/**/*.{js,ts,jsx,tsx}",
     ],
-    darkMode: 'class',
     theme: {
         extend: {
             colors: {
-                border: "hsl(var(--border))",
-                input: "hsl(var(--input))",
-                ring: "hsl(var(--ring))",
-                background: "hsl(var(--background))",
-                foreground: "hsl(var(--foreground))",
-                primary: {
-                    DEFAULT: "hsl(var(--primary))",
-                    foreground: "hsl(var(--primary-foreground))",
-                    light: '#3b82f6',
-                    dark: '#1d4ed8',
-                },
-                secondary: {
-                    DEFAULT: "hsl(var(--secondary))",
-                    foreground: "hsl(var(--secondary-foreground))",
-                },
-                destructive: {
-                    DEFAULT: "hsl(var(--destructive))",
-                    foreground: "hsl(var(--destructive-foreground))",
-                },
-                muted: {
-                    DEFAULT: "hsl(var(--muted))",
-                    foreground: "hsl(var(--muted-foreground))",
-                },
-                accent: {
-                    DEFAULT: "hsl(var(--accent))",
-                    foreground: "hsl(var(--accent-foreground))",
-                    purple: '#8b5cf6',
-                    cyan: '#06b6d4',
-                    pink: '#ec4899',
-                },
-                popover: {
-                    DEFAULT: "hsl(var(--popover))",
-                    foreground: "hsl(var(--popover-foreground))",
-                },
-                card: {
-                    DEFAULT: "hsl(var(--card))",
-                    foreground: "hsl(var(--card-foreground))",
-                },
                 navy: {
                     900: '#020617', // Slate 950
                     800: '#0f172a', // Slate 900
                     700: '#1e293b', // Slate 800
+                },
+                primary: {
+                    light: '#3b82f6', // Blue 500
+                    DEFAULT: '#2563eb', // Blue 600
+                    dark: '#1d4ed8', // Blue 700
                 },
                 success: {
                     light: '#34d399', // Emerald 400
@@ -61,6 +27,11 @@ export default {
                     DEFAULT: '#f59e0b', // Amber 500
                     dark: '#d97706', // Amber 600
                 },
+                accent: {
+                    purple: '#8b5cf6', // Violet 500
+                    cyan: '#06b6d4', // Cyan 500
+                    pink: '#ec4899', // Pink 500
+                }
             },
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],

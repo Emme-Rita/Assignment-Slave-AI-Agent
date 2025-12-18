@@ -68,7 +68,9 @@ class AIService:
             4. Do NOT mention that you are an AI or that this is an AI-generated response.
             5. Write directly as if you are a student submitting the work.
             6. Vary sentence structure and length to avoid AI detection patterns.
-            7. CRITICAL: Identify and solve ALL distinct questions, tasks, or sections found in the content. Do not summarize; provide the full solution for each part. Use markdown headers to separate different questions/sections within the 'answer' field.
+            7. **STRICT FORMATTING RULE**: Do NOT use LaTeX math syntax (e.g., `$$`, `\text{}`, `\frac{}`). Use standard text symbols (e.g., "A -> B", "x^2", "1/2").
+            8. **DIRECT ANSWER ONLY**: Do NOT provide explanations, introductory filler ("Here is the answer"), or "meta-commentary". Just provide the solution/essay/code itself.
+            9. **DIAGRAMS**: If the question involves a process, flow, or graph, YOU MUST PROVIDE A CLEAR TEXT-BASED DIAGRAM (ASCII Art) wrapped in triple backticks (```).
 
             JSON Structure:
             {
