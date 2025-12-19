@@ -1,12 +1,13 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 class Settings:
     PROJECT_NAME: str = os.getenv("PROJECT_NAME", "Assignment Helper")
     API_V1_STR: str = os.getenv("API_V1_STR", "/api/v1")
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY") # Still keep for fallback or if needed
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY")
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY")
 
     # Email Settings
@@ -22,5 +23,12 @@ class Settings:
 
     class Config:
         case_sensitive = True
+
+    def reload(self):
+        """Reload settings from .env file."""
+        load_dotenv(override=True)
+        self.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+        self.GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+        self.TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
 settings = Settings()

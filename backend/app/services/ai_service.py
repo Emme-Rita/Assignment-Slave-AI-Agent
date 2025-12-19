@@ -1,89 +1,53 @@
-import google.generativeai as genai
+import os
+from groq import Groq
 from app.core.config import settings
 import PyPDF2
 import docx
 import io
 import json
+import re
 from typing import Optional, List
-
-# Configure Gemini
-genai.configure(api_key=settings.GEMINI_API_KEY)
 
 class AIService:
     def __init__(self):
-        # We try to use gemini-2.0-flash-lite for higher quotas and better stability
-        # Models to try in order of preference
-        models = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-flash-latest']
-        
-        self.model = None
-        for m_name in models:
-            try:
-                self.model = genai.GenerativeModel(m_name)
-                # Test the model immediately
-                # self.model.generate_content("hi") # Removed to avoid burning quota during init
-                break
-            except:
-                continue
-        
-        if not self.model:
-            self.model = genai.GenerativeModel('gemini-flash-latest')
-            
-        self.audio_model = self.model
+        # Configure on init to pick up latest settings
+        self._setup()
+        self.model = "llama-3.3-70b-versatile"
+    
+    def _setup(self):
+        """Configure Groq with latest settings."""
+        # Force reload settings from .env
+        settings.reload()
+        if settings.GROQ_API_KEY:
+            self.client = Groq(api_key=settings.GROQ_API_KEY)
+        else:
+            self.client = None
     
     async def generate_response(
         self, 
         prompt: str, 
         file_content: Optional[str] = None,
         context: Optional[str] = None,
-        audio_data: Optional[dict] = None,
+        audio_data: Optional[dict] = None, # Audio skipped in Groq migration for now
         student_level: Optional[str] = None,
         department: Optional[str] = None,
         style_instruction: Optional[str] = None,
         history: Optional[List[dict]] = None
     ) -> str:
         """
-        Generate AI response based on prompt, file content, optional context, audio, and chat history.
+        Generate AI response based on prompt, file content, optional context, and chat history using Groq.
         """
+        # Ensure latest settings are loaded and configured
+        self._setup()
+        
+        if not self.client:
+            raise Exception("Groq API Key not configured. Please add GROQ_API_KEY to your .env file.")
+        
         try:
-            # Build the prompt parts
-            parts = []
+            messages = []
             
-            # 1. Base Context & Persona
-            if student_level or department:
-                profile_context = "Role Context:\n"
-                if student_level:
-                    profile_context += f"You are writing for a {student_level} level student. Adjust complexity accordingly.\n"
-                if department:
-                    profile_context += f"The field of study is {department}. Use appropriate terminology.\n"
-                parts.append(profile_context)
-
-            # 2. Reference Materials (Fixed Data)
-            if style_instruction:
-                parts.append(f"STYLE INSTRUCTION (MIMIC THIS AUTHOR):\n{style_instruction}\n")
-
-            if context:
-                parts.append(f"Research Context:\n{context}\n")
-            
-            if file_content:
-                parts.append(f"Assignment Content:\n{file_content}\n")
-
-            # 3. Chat History (if any)
-            if history:
-                parts.append("CONVERSATION SO FAR:\n")
-                for msg in history:
-                    role = msg.get("role", "user")
-                    content = msg.get("content", "")
-                    parts.append(f"{role.upper()}: {content}\n")
-                
-                parts.append("\nREFINEMENT INSTRUCTION:\n")
-                parts.append(f"The user wants to refine the previous output. Apply the following changes to the EXISTING work: {prompt}\n")
-                parts.append("IMPORTANT: Do NOT just answer the refinement. You MUST return the ENTIRE updated assignment (original + new additions/changes) as a single complete output.\n")
-            else:
-                # 4. Current Instructions (Initial Request)
-                parts.append(f"User Instructions:\n{prompt}")
-            
-            # 5. Output Constraints (System Instructions)
-            parts.append("""
+            # 1. System Prompt & Output Constraints
+            system_prompt = """
             IMPORTANT: Follow these strict instructions:
             1. You must return the response in valid JSON format with the following structure.
             2. The content of 'answer' MUST be written in 100% natural, human-like language. 
@@ -106,92 +70,66 @@ class AIService:
                 "more": "Additional resources or related topics"
             }
             Do not include markdown formatting (like ```json) in the response, just the raw JSON string.
-            """)
+            """
             
-            # Select model and add audio if present
-            if audio_data:
-                model = self.audio_model
-                parts.append({
-                    "mime_type": audio_data['mime_type'],
-                    "data": audio_data['data']
+            # Add role context
+            if student_level or department:
+                system_prompt += "\nRole Context:\n"
+                if student_level:
+                    system_prompt += f"You are writing for a {student_level} level student. Adjust complexity accordingly.\n"
+                if department:
+                    system_prompt += f"The field of study is {department}. Use appropriate terminology.\n"
+
+            messages.append({"role": "system", "content": system_prompt})
+
+            # 2. Contextual Information
+            context_text = ""
+            if style_instruction:
+                context_text += f"STYLE INSTRUCTION (MIMIC THIS AUTHOR):\n{style_instruction}\n"
+            if context:
+                context_text += f"Research Context:\n{context}\n"
+            if file_content:
+                context_text += f"Assignment Content:\n{file_content}\n"
+            
+            if context_text:
+                messages.append({"role": "user", "content": f"REFER TO THIS CONTEXT:\n{context_text}"})
+
+            # 3. Chat History (if any)
+            if history:
+                for msg in history:
+                    messages.append({
+                        "role": msg.get("role", "user"),
+                        "content": msg.get("content", "")
+                    })
+                
+                messages.append({
+                    "role": "user", 
+                    "content": f"The user wants to refine the previous output. Apply the following changes to the EXISTING work: {prompt}\nIMPORTANT: You MUST return the ENTIRE updated assignment as a single complete output."
                 })
             else:
-                model = self.model
+                # 4. Current Instructions (Initial Request)
+                messages.append({"role": "user", "content": f"User Instructions:\n{prompt}"})
             
             # Generate response
-            response = await model.generate_content_async(parts)
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.7,
+                stream=False,
+                response_format={"type": "json_object"} if "llama-3" in self.model else None
+            )
             
-            # Safety check: Verify valid response
-            if response.candidates and response.candidates[0].content.parts:
-                return response.text
-            elif response.candidates and response.candidates[0].finish_reason:
-                # If finished but no text, usually safety block
-                 return json.dumps({
-                    "id": "safety_block",
-                    "title": "Content Blocked",
-                    "question": "Safety Filter Triggered",
-                    "answer": f"The AI model refused to generate this content. Reason code: {response.candidates[0].finish_reason}. Please modify your prompt.",
-                    "summary": "Safety restriction",
-                    "note": "Try rephrasing or removing sensitive keywords."
-                })
-            else:
-                 return json.dumps({
-                    "id": "error",
-                    "title": "Generation Error",
-                    "question": "Unknown Error",
-                    "answer": "The AI returned an empty response.",
-                    "summary": "Error",
-                    "note": "Please try again."
-                })
+            return response.choices[0].message.content
         
         except Exception as e:
             error_str = str(e)
             
-            # Handle quota exceeded errors with user-friendly message
             if "429" in error_str or "quota" in error_str.lower():
                 raise Exception(
-                    "AI Service Quota Exceeded: You've hit the daily request limit. "
-                    "Please try again later (quota resets at midnight UTC) or upgrade your Gemini API plan. "
-                    "Visit https://ai.google.dev/pricing for more information."
+                    "Groq API Quota Exceeded. Please try again later or check your Groq plan."
                 )
             
-            # Handle rate limit errors
-            if "rate limit" in error_str.lower():
-                raise Exception(
-                    "AI Service Rate Limited: Too many requests in a short time. "
-                    "Please wait a few seconds and try again."
-                )
-            
-            # Generic error
-            raise Exception(f"AI Service Error: {error_str}")
-    
-    def _build_prompt(
-        self, 
-        prompt: str, 
-        file_content: Optional[str] = None,
-        context: Optional[str] = None,
-        student_level: Optional[str] = None,
-        department: Optional[str] = None
-    ) -> str:
-        """Build comprehensive prompt from components."""
-        parts = []
-        
-        if student_level or department:
-            if student_level:
-                parts.append(f"Target Level: {student_level}")
-            if department:
-                parts.append(f"Department: {department}")
-            parts.append("\n")
-        
-        if context:
-            parts.append(f"Research Context:\n{context}\n")
-        
-        if file_content:
-            parts.append(f"Assignment Content:\n{file_content}\n")
-        
-        parts.append(f"User Instructions:\n{prompt}")
-        
-        return "\n".join(parts)
+            raise Exception(f"AI Service Error (Groq): {error_str}")
     
     @staticmethod
     def extract_text_from_pdf(file_bytes: bytes) -> str:

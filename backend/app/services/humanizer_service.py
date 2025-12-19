@@ -1,22 +1,28 @@
-import google.generativeai as genai
+from groq import Groq
 from app.core.config import settings
 from typing import Optional
 
-# Configure Gemini (re-using main config, but ideally could use a different model/config)
-genai.configure(api_key=settings.GEMINI_API_KEY)
-
 class HumanizerService:
     def __init__(self):
-        # We use flash for speed/cost or pro for better reasoning. 
-        # For "humanizing", sometimes a less perfect model is actually better, 
-        # but we need high adherence to the "humanizing" instructions.
-        # Use gemini-1.5-flash for speed and reliability
-        self.model = genai.GenerativeModel('gemini-1.5-flash') 
+        # Using Groq for humanizing text
+        self._setup()
+        self.model = "llama-3.3-70b-versatile"
+    
+    def _setup(self):
+        """Configure Groq with latest settings."""
+        if settings.GROQ_API_KEY:
+            self.client = Groq(api_key=settings.GROQ_API_KEY)
+        else:
+            self.client = None
     
     async def humanize_text(self, text: str, student_level: str = "University") -> str:
         """
-        Rewrites text to mimic human writing patterns (high perplexity/burstiness).
+        Rewrites text to mimic human writing patterns (high perplexity/burstiness) using Groq.
         """
+        self._setup()
+        if not self.client:
+            return text
+
         try:
             # Tuned prompts for different levels
             style_guide = ""
@@ -46,14 +52,13 @@ class HumanizerService:
             Return ONLY the rewritten text.
             """
             
-            response = self.model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.9 # High temperature for more randomness/creativity
-                )
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.9
             )
             
-            return response.text
+            return response.choices[0].message.content
         
         except Exception as e:
             # If humanization fails, return original text to be safe
