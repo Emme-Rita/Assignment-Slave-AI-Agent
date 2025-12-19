@@ -32,7 +32,9 @@ function App() {
   const fetchHistory = async () => {
     try {
       const response = await assignmentApi.getHistory(10);
-      setHistoryItems(response.data);
+      if (response.data.success) {
+        setHistoryItems(response.data.data);
+      }
     } catch (error) {
       console.error('Failed to fetch history:', error);
     }
@@ -45,6 +47,38 @@ function App() {
     setAudioBlob(null);
     setInstructions('');
     setActiveTab('dashboard');
+  };
+
+  const handleSelectChat = async (id: string) => {
+    try {
+      setIsAnalyzing(true); // Show loader while fetching details
+      const response = await assignmentApi.getHistoryDetails(id);
+      if (response.data.success) {
+        const details = response.data.data;
+
+        // Map history detail to dashboard result format
+        const recordResult = details.result || {};
+
+        setResult(recordResult);
+        setChatHistory([
+          { role: 'user', content: details.prompt },
+          { role: 'assistant', content: recordResult.answer, metadata: recordResult }
+        ]);
+
+        // Sync shared fields
+        setStudentLevel(details.student_level || 'University');
+        setDepartment(details.department || 'General');
+        setSubmissionFormat(details.submission_format || 'docx');
+        setSchoolName(details.school_name || '');
+
+        setActiveTab('dashboard');
+      }
+    } catch (error) {
+      console.error('Failed to load chat details:', error);
+      alert('Failed to load chat details');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   // Execution Fields
@@ -345,6 +379,7 @@ function App() {
       onTabChange={setActiveTab}
       history={historyItems}
       onNewChat={handleNewChat}
+      onSelectChat={handleSelectChat}
       onDeliver={handleDeliver}
       isDelivering={isDelivering}
       canDeliver={!!result && !result.delivered}

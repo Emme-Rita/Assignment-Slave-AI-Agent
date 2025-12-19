@@ -9,6 +9,7 @@ interface MainLayoutProps {
     onTabChange: (tab: string) => void;
     history?: any[];
     onNewChat?: () => void;
+    onSelectChat?: (id: string) => void;
     onDeliver?: () => void;
     isDelivering?: boolean;
     canDeliver?: boolean;
@@ -20,6 +21,7 @@ export function MainLayout({
     onTabChange,
     history,
     onNewChat,
+    onSelectChat,
     onDeliver,
     isDelivering,
     canDeliver
@@ -31,6 +33,7 @@ export function MainLayout({
                 onTabChange={onTabChange}
                 history={history}
                 onNewChat={onNewChat}
+                onSelectChat={onSelectChat}
             />
 
             <main className="flex-1 md:ml-64 relative">

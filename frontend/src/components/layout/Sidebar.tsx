@@ -5,10 +5,11 @@ interface SidebarProps {
     activeTab: string;
     onTabChange: (tab: string) => void;
     history?: any[];
+    onSelectChat?: (id: string) => void;
     onNewChat?: () => void;
 }
 
-export function Sidebar({ activeTab, onTabChange, history = [], onNewChat }: SidebarProps) {
+export function Sidebar({ activeTab, onTabChange, history = [], onNewChat, onSelectChat }: SidebarProps) {
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard', color: 'text-primary-light', hoverBg: 'hover:bg-primary/10', activeBg: 'bg-primary/10' },
     ];
@@ -63,8 +64,7 @@ export function Sidebar({ activeTab, onTabChange, history = [], onNewChat }: Sid
                                     key={chat.id}
                                     className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-white/5 transition-all text-left group"
                                     onClick={() => {
-                                        onTabChange('history');
-                                        // We might need a way to trigger deep selection of history chat here
+                                        if (onSelectChat) onSelectChat(chat.id);
                                     }}
                                 >
                                     <MessageSquare size={14} className="text-gray-500 group-hover:text-primary-light" />

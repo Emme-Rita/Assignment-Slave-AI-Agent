@@ -78,48 +78,91 @@ class WhatsAppService:
             try:
                 import pyautogui
                 import webbrowser
+                import pygetwindow as gw
+                import win32gui
+                import win32con
                 from urllib.parse import quote
                 
-                # 1. Copy file to clipboard using PowerShell (LiteralPath handles spaces/chars better)
-                # We use multiple formats to ensure compatibility
-                cmd = f'powershell -command "Set-Clipboard -LiteralPath \'{abs_path}\'"'
+                # 1. Copy file to clipboard using PowerShell 
+                cmd = f'powershell -command "Set-Clipboard -Path \'{abs_path}\'"'
                 subprocess.run(cmd, shell=True, check=True)
-                logger.info("File copied to clipboard.")
+                logger.info("File copied to clipboard via PowerShell.")
                 
                 # 2. Open WhatsApp Chat directly
-                # bypassing pywhatkit.sendwhatmsg which types/sends text automatically
                 url = f"https://web.whatsapp.com/send?phone={recipient_number}"
                 webbrowser.open(url)
                 
-                # 3. Wait for load (User reported 5 mins, but that was likely failure to act, not load time)
-                # We'll wait 20s for the page to render and the "Starting chat" overlay to clear
-                sleep(20)
+                # 3. Wait for load (Increased to 35s to be absolutely safe for slow loads)
+                logger.info("Waiting 35 seconds for WhatsApp Web to fully load and resolve 'Starting chat'...")
+                sleep(35)
                 
-                # 4. Ensure focus (Clicking near the input bar area)
-                # It's hard to guess coordinates, but usually the chat input is at the bottom.
-                # Ctrl+F to focus search, then Tab? Or just Tab until focus?
-                # Usually opening the link focuses the chat input automatically.
-                # Let's try attempting Paste directly first.
+                # 4. Attempt to focus the window using win32gui (more robust than pygetwindow)
+                def window_enum_handler(hwnd, ctx):
+                    if win32gui.IsWindowVisible(hwnd):
+                        title = win32gui.GetWindowText(hwnd)
+                        if 'whatsapp' in title.lower():
+                            ctx.append((hwnd, title))
+
+                wa_windows = []
+                win32gui.EnumWindows(window_enum_handler, wa_windows)
                 
-                logger.info("Pasting file...")
+                if wa_windows:
+                    hwnd, title = wa_windows[0]
+                    logger.info(f"Found window: '{title}'. Bringing to foreground.")
+                    try:
+                        win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+                        win32gui.SetForegroundWindow(hwnd)
+                        sleep(2)
+                    except Exception as e:
+                        logger.warning(f"SetForegroundWindow failed: {e}. Trying simple click.")
+                
+                # 5. Clear any blocking overlays or 'Starting chat' banner
+                # Pressing Esc twice to be sure any modal or banner is cleared
+                pyautogui.press('esc')
+                sleep(1)
+                pyautogui.press('esc')
+                sleep(1)
+
+                # 6. Force focus by clicking the input area
+                # In WA Web, the input area is usually in the bottom 10% of the window
+                try:
+                    windows = [w for w in gw.getAllWindows() if 'WhatsApp' in w.title or 'WhatsApp' in w.title.lower()]
+                    if windows:
+                        w = windows[0]
+                        # Click about 80 pixels above bottom center to hit the message box
+                        focus_x = w.left + (w.width // 2)
+                        focus_y = (w.top + w.height) - 80
+                        logger.info(f"Clicking input area at ({focus_x}, {focus_y}) to ensure focus.")
+                        pyautogui.click(focus_x, focus_y)
+                        sleep(1)
+                except:
+                    pass
+
+                # 7. Paste file
+                logger.info("Pasting file (Ctrl+V)...")
                 pyautogui.hotkey('ctrl', 'v')
                 
-                # 5. Wait for File Preview Modal
-                # This is critical. If paste worked, a modal appears.
-                sleep(5)
+                # 8. Wait for File Preview Modal to appear (it takes a second to process the file)
+                sleep(8)
                 
-                # 6. Type Caption (if exists) 
-                # When preview is open, focus is usually in the "Add a caption" box.
+                # 9. Type Caption (if exists) 
                 if caption:
-                    pyautogui.write(caption)
+                    logger.info(f"Typing caption: {caption}")
+                    pyautogui.write(caption, interval=0.03)
                     sleep(2)
                 
-                # 7. Send
+                # 10. Send
+                logger.info("Pressing Enter to send...")
                 pyautogui.press('enter')
+                
+                # Give it a moment to actually send
+                sleep(5)
                 return True
                 
             except Exception as e:
                 logger.error(f"File send error: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
                 return False
 
         return await asyncio.to_thread(_send_file_logic)
