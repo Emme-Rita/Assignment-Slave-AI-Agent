@@ -10,7 +10,8 @@ class HumanizerService:
         # We use flash for speed/cost or pro for better reasoning. 
         # For "humanizing", sometimes a less perfect model is actually better, 
         # but we need high adherence to the "humanizing" instructions.
-        self.model = genai.GenerativeModel('gemini-pro') 
+        # Use gemini-1.5-flash for speed and reliability
+        self.model = genai.GenerativeModel('gemini-1.5-flash') 
     
     async def humanize_text(self, text: str, student_level: str = "University") -> str:
         """

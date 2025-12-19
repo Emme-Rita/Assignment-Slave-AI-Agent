@@ -12,6 +12,7 @@ class Conversation(Base):
     file_name = Column(String, nullable=True)
     audio_file_path = Column(String, nullable=True)
     response_json = Column(Text, nullable=True) # Storing JSON as text
+    school_name = Column(String, nullable=True)
     
     # Metadata fields
     student_level = Column(String, nullable=True)

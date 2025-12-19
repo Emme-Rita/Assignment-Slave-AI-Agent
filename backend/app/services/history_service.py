@@ -47,6 +47,9 @@ class HistoryService:
                 email_sent=execution_data.get("email_sent", False),
                 file_generated=execution_data.get("file_generated"),
                 
+                # School
+                school_name=execution_data.get("school_name"),
+                
                 # Verification
                 trust_score=trust_score,
                 verification_json=verification_json,
@@ -92,7 +95,8 @@ class HistoryService:
                     "stealth_mode": conv.stealth_mode,
                     "style_mirrored": conv.style_mirrored,
                     "email_sent": conv.email_sent,
-                    "trust_score": conv.trust_score
+                    "trust_score": conv.trust_score,
+                    "school_name": conv.school_name
                 })
             return records
             
@@ -133,6 +137,7 @@ class HistoryService:
                 "style_mirrored": conv.style_mirrored,
                 "email_sent": conv.email_sent,
                 "file_generated": conv.file_generated,
+                "school_name": conv.school_name,
                 "result": result_data
             }
             

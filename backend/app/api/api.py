@@ -39,12 +39,6 @@ api_router.include_router(
     tags=["student"]
 )
 
-api_router.include_router(
-    history.router,
-    prefix="/history",
-    tags=["history"]
-)
-
 from app.api.v1.endpoints import download
 api_router.include_router(
     download.router,

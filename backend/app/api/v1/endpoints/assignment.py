@@ -134,10 +134,12 @@ async def analyze_assignment(
             "verification": verification_result
         }
     
-    except HTTPException as he:
-        raise he
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = str(e)
+        status_code = 429 if "Quota Exceeded" in error_msg or "Rate Limited" in error_msg else 500
+        raise HTTPException(status_code=status_code, detail=error_msg)
 
 
 @router.post("/submit")
@@ -263,10 +265,12 @@ async def submit_assignment(
             
         return response_data
 
-    except HTTPException as he:
-        raise he
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = str(e)
+        status_code = 429 if "Quota Exceeded" in error_msg or "Rate Limited" in error_msg else 500
+        raise HTTPException(status_code=status_code, detail=error_msg)
 
 @router.post("/execute")
 async def execute_assignment(
@@ -523,5 +527,224 @@ async def execute_assignment(
             "style_mirrored": bool(style_instruction)
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = str(e)
+        status_code = 429 if "Quota Exceeded" in error_msg or "Rate Limited" in error_msg else 500
+        raise HTTPException(status_code=status_code, detail=error_msg)
+
+@router.post("/refine")
+async def refine_assignment(
+    file: Union[UploadFile, str, None] = File(None),
+    image: Union[UploadFile, str, None] = File(None),
+    voice: Union[UploadFile, str, None] = File(None),
+    style_sample: Union[UploadFile, str, None] = File(None),
+    prompt: str = Form(...),
+    history: str = Form("[]"), # JSON string of history
+    student_level: str = Form("University"),
+    department: str = Form("General"),
+    use_research: bool = Form(True)
+):
+    """
+    Refine assignment draft iteratively via chat.
+    Doesn't generate files or send notifications.
+    """
+    try:
+        # Input Processing
+        if isinstance(image, str): image = None
+        if isinstance(voice, str): voice = None
+        if isinstance(file, str): file = None
+        if isinstance(style_sample, str): style_sample = None
+        
+        assignment_file = image if image else file
+        file_content = None
+        audio_data = None
+        style_instruction = None
+        
+        if assignment_file:
+            await file_service.validate_file(assignment_file)
+            file_bytes = await assignment_file.read()
+            file_category = file_service.get_file_category(assignment_file.content_type)
+            if file_category == 'pdf':
+                file_content = ai_service.extract_text_from_pdf(file_bytes)
+            elif file_category == 'word':
+                file_content = ai_service.extract_text_from_docx(file_bytes)
+            elif file_category == 'image':
+                file_content = f"[Image file: {assignment_file.filename}]"
+
+        if style_sample:
+            try:
+                style_bytes = await style_sample.read()
+                style_text = ""
+                # Simple text extraction for style analysis
+                try:
+                    style_text = style_bytes.decode('utf-8')
+                except:
+                    pass
+                if style_text:
+                    style_instruction = await style_service.analyze_style(style_text)
+            except:
+                pass
+
+        if voice:
+            voice_bytes = await voice.read()
+            audio_data = {"data": voice_bytes, "mime_type": voice.content_type or "audio/mp3"}
+
+        # Parse history
+        try:
+            chat_history = json.loads(history)
+        except:
+            chat_history = []
+
+        # Research
+        context = None
+        if use_research:
+            try:
+                research_results = await search_service.perform_research(prompt[:200])
+                context = research_results.get('summary', '')
+            except:
+                pass
+
+        # AI Generation
+        ai_response_text = await ai_service.generate_response(
+            prompt=prompt,
+            file_content=file_content,
+            context=context,
+            audio_data=audio_data,
+            student_level=student_level,
+            department=department,
+            style_instruction=style_instruction,
+            history=chat_history
+        )
+
+        # Parse JSON
+        try:
+            cleaned_response = ai_response_text.strip()
+            if cleaned_response.startswith("```"):
+                cleaned_response = re.sub(r'^```[a-zA-Z]*\n', '', cleaned_response)
+                cleaned_response = re.sub(r'```$', '', cleaned_response.strip())
+            response_json = json.loads(cleaned_response)
+        except:
+            response_json = {"answer": ai_response_text}
+
+        return {
+            "success": True,
+            "data": response_json,
+            "research_context": context
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = str(e)
+        status_code = 429 if "Quota Exceeded" in error_msg or "Rate Limited" in error_msg else 500
+        raise HTTPException(status_code=status_code, detail=error_msg)
+
+@router.post("/deliver")
+async def deliver_assignment(
+    answer: str = Form(...),
+    title: str = Form(...),
+    question: str = Form(""),
+    summary: str = Form(""),
+    research_context: Optional[str] = Form(None),
+    student_level: str = Form("University"),
+    department: str = Form("General"),
+    student_name: Optional[str] = Form(None),
+    matricule_number: Optional[str] = Form(None),
+    school_name: Optional[str] = Form(None),
+    submission_format: str = Form("docx"),
+    email: Optional[str] = Form(None),
+    whatsapp: Optional[str] = Form(None),
+    stealth_mode: bool = Form(True)
+):
+    """
+    Finalize and deliver the assignment (File gen + Notifications + History).
+    """
+    try:
+        final_answer = answer
+        
+        # 1. Stealth Mode (Humanization)
+        if stealth_mode:
+            try:
+                final_answer = await humanizer_service.humanize_text(answer, student_level)
+            except:
+                pass
+
+        # 2. File Generation
+        sanitized_title = re.sub(r'[^\w_]', '', title.lower().replace(" ", "_"))[:50] or "assignment"
+        filename = f"{sanitized_title}.{submission_format}"
+        
+        student_info = {
+            "name": student_name,
+            "matricule": matricule_number,
+            "school": school_name,
+            "level": student_level,
+            "department": department
+        }
+
+        generated_file_path = None
+        if submission_format.lower() == 'pdf':
+            generated_file_path = file_service.generate_pdf(final_answer, filename)
+        else:
+            generated_file_path = file_service.generate_docx(final_answer, filename, student_info=student_info)
+
+        # 3. Notifications
+        email_sent = False
+        whatsapp_sent = False
+        
+        if email and generated_file_path:
+            try:
+                await email_service.send_assignment_result(
+                    recipient=email,
+                    subject=f"Final Assignment: {title}",
+                    content=f"Your assignment '{title}' is ready.",
+                    attachments=[generated_file_path]
+                )
+                email_sent = True
+            except: pass
+
+        if whatsapp and generated_file_path:
+            try:
+                from app.services.whatsapp_service import whatsapp_service
+                await whatsapp_service.send_file(whatsapp, generated_file_path, f"Final assignment: {title}")
+                whatsapp_sent = True
+            except: pass
+
+        # 4. History
+        response_json = {
+            "answer": final_answer,
+            "title": title,
+            "question": question,
+            "summary": summary,
+            "humanized": stealth_mode
+        }
+        
+        await history_service.save_execution({
+            "prompt": question or "Finalized Assignment",
+            "student_level": student_level,
+            "department": department,
+            "submission_format": submission_format,
+            "use_research": True,
+            "stealth_mode": stealth_mode,
+            "style_mirrored": False,
+            "email_sent": email_sent,
+            "file_generated": generated_file_path,
+            "research_context": research_context,
+            "result": response_json,
+            "school_name": school_name
+        })
+
+        return {
+            "success": True,
+            "file_generated": generated_file_path,
+            "email_sent": email_sent,
+            "whatsapp_sent": whatsapp_sent
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = str(e)
+        status_code = 429 if "Quota Exceeded" in error_msg or "Rate Limited" in error_msg else 500
+        raise HTTPException(status_code=status_code, detail=error_msg)

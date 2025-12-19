@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MainLayout } from './components/layout/MainLayout';
-import { FileUpload } from './components/upload/UploadZone';
 import { AudioPanel } from './components/audio/AudioPanel';
 import { ResultsDisplay } from './components/dashboard/ResultsDisplay';
-import { Button } from './components/ui/Button';
 import { Card, CardContent } from './components/ui/Card';
 import { Input } from './components/ui/Input';
 import { assignmentApi } from './lib/api';
-import { Wand2, Loader2, BookOpen, GraduationCap, Mail, FileText, Feather, Settings as SettingsIcon } from 'lucide-react';
+import { GraduationCap, FileText, Feather, Plus, Send, Mic, Loader2 } from 'lucide-react';
 import { HistoryView } from './components/history/HistoryView';
+import { SettingsView } from './components/settings/SettingsView';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -19,12 +18,36 @@ function App() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [instructions, setInstructions] = useState('');
   // Research is now fully automatic and hidden from user control
-  const [enableStealth, setEnableStealth] = useState(true);
+  const [enableStealth] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [isDelivering, setIsDelivering] = useState(false);
+  const [historyItems, setHistoryItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      const response = await assignmentApi.getHistory(10);
+      setHistoryItems(response.data);
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+    }
+  };
+
+  const handleNewChat = () => {
+    setResult(null);
+    setChatHistory([]);
+    setFile(null);
+    setAudioBlob(null);
+    setInstructions('');
+    setActiveTab('dashboard');
+  };
 
   // Execution Fields
-  const [educationCategory, setEducationCategory] = useState('University');
   const [studentLevel, setStudentLevel] = useState('Level 100');
   const [department, setDepartment] = useState('Computer Science');
   const [submissionFormat, setSubmissionFormat] = useState('docx');
@@ -62,291 +85,273 @@ function App() {
         formData.append('voice', audioFile);
       }
 
-      const response = await assignmentApi.execute(formData);
-      let parsedResult = response.data; // { success: true, data: {...}, file_generated: "...", ... }
+      const response = await assignmentApi.refine(formData);
+      let parsedResult = response.data;
 
       if (parsedResult.success) {
-        // Merge the core data (answer, title) with the metadata (file, verification)
-        const mergedResult = {
-          ...parsedResult.data,
-          file_generated: parsedResult.file_generated,
-          verification: parsedResult.verification || parsedResult.data.verification // Handle undefined verification
-        };
-        setResult(mergedResult);
+        setResult(parsedResult.data);
+        setChatHistory([
+          { role: 'user', content: instructions || 'Generate assignment solution.' },
+          { role: 'assistant', content: parsedResult.data.answer, metadata: parsedResult.data }
+        ]);
+        // Refresh history to update sidebar
+        await fetchHistory();
       } else {
         setResult(parsedResult);
       }
 
     } catch (error: any) {
-      console.error('Execution failed:', error);
-      let errorMessage = 'Execution failed. Please try again.';
-      if (error.response && error.response.data && error.response.data.detail) {
-        const detail = error.response.data.detail;
-        if (Array.isArray(detail)) {
-          errorMessage = detail.map((e: any) => {
-            const field = e.loc ? e.loc[e.loc.length - 1] : 'unknown';
-            return `${field}: ${e.msg}`;
-          }).join(', ');
-        } else if (typeof detail === 'object') {
-          errorMessage = `Error: ${JSON.stringify(detail)}`;
-        } else {
-          errorMessage = `Error: ${detail}`;
-        }
-      } else if (error.message) {
-        errorMessage = `Error: ${error.message}`;
-      }
-      alert(errorMessage);
+      const errorMsg = error.response?.data?.detail || error.message || 'Analysis failed. Please try again.';
+      alert(`Error: ${errorMsg}`);
     } finally {
       setIsAnalyzing(false);
     }
   };
 
+  const handleRefine = async (feedback: string) => {
+    if (!feedback) return;
+    setIsAnalyzing(true);
+    try {
+      const formData = new FormData();
+      if (file) formData.append('file', file);
+      if (styleSample) formData.append('style_sample', styleSample);
+      formData.append('prompt', feedback);
+      formData.append('history', JSON.stringify(chatHistory));
+      formData.append('use_research', 'true');
+      formData.append('student_level', studentLevel);
+      formData.append('department', department);
+
+      const response = await assignmentApi.refine(formData);
+      if (response.data.success) {
+        const newData = response.data.data;
+        setResult(newData);
+        setChatHistory([...chatHistory,
+        { role: 'user', content: feedback },
+        { role: 'assistant', content: newData.answer, metadata: newData }
+        ]);
+        // Refresh history to update sidebar
+        await fetchHistory();
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.detail || error.message || 'Refinement failed. Please try again.';
+      alert(`Error: ${errorMsg}`);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleDeliver = async () => {
+    if (!result) return;
+    setIsDelivering(true);
+    try {
+      const formData = new FormData();
+      formData.append('answer', result.answer);
+      formData.append('title', result.title || 'Assignment');
+      formData.append('question', result.question || '');
+      formData.append('summary', result.summary || '');
+      // formData.append('research_context', ''); // Optional
+      formData.append('student_level', studentLevel);
+      formData.append('department', department);
+      formData.append('student_name', studentName);
+      formData.append('matricule_number', matriculeNumber);
+      formData.append('school_name', schoolName);
+      formData.append('submission_format', submissionFormat);
+      if (email) formData.append('email', email);
+      if (whatsapp) formData.append('whatsapp', whatsapp);
+      formData.append('stealth_mode', 'true');
+
+      const response = await assignmentApi.deliver(formData);
+      if (response.data.success) {
+        alert('Assignment successfully finalized and delivered!');
+        // Keep the result but mark as delivered
+        setResult({ ...result, delivered: true, file_generated: response.data.file_generated });
+        // Refresh history to update sidebar
+        await fetchHistory();
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.detail || error.message || 'Delivery failed. Please try again.';
+      alert(`Error: ${errorMsg}`);
+    } finally {
+      setIsDelivering(false);
+    }
+  };
+
   const renderDashboard = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Left Column: Inputs */}
-      <div className="lg:col-span-2 space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-white">New Assignment Task</h1>
-          <p className="text-gray-400">Configure your autonomous agent to handle your assignment.</p>
-        </div>
+    <div className={`relative min-h-[calc(100vh-120px)] flex flex-col items-center max-w-4xl mx-auto ${!result && !isAnalyzing ? 'justify-center' : ''}`}>
+      {/* Landing View (only shows if no result and not analyzing) */}
+      {!result && !isAnalyzing && (
+        <div className="w-full space-y-12 animate-in fade-in zoom-in duration-500 pb-32">
+          <div className="text-center space-y-4">
+            <h1 className="text-5xl font-extrabold text-white tracking-tight">
+              What can I help with?
+            </h1>
+            <p className="text-gray-400 text-lg">Your autonomous agent is ready to handle your assignments.</p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="md:col-span-2">
-            <CardContent className="p-4 space-y-4">
-              {/* Header for the card */}
-              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2 mb-2">
-                <GraduationCap className="w-4 h-4 text-primary" /> Student Profile
-              </label>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Name */}
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Full Name</label>
-                  <Input
-                    type="text"
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    placeholder="e.g. John Doe"
-                  />
+          {/* Profile Info Grid (The "Setup") */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-80 hover:opacity-100 transition-opacity">
+            <Card className="md:col-span-2 border-white/5 bg-navy-800/30 backdrop-blur-sm">
+              <CardContent className="p-6 space-y-4">
+                <label className="text-sm font-semibold text-primary-light flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4" /> Academic Profile
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-gray-500">Student Name</label>
+                    <Input value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="John Doe" className="bg-navy-900/50 border-white/5 h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-gray-500">Matricule</label>
+                    <Input value={matriculeNumber} onChange={(e) => setMatriculeNumber(e.target.value)} placeholder="FE12A345" className="bg-navy-900/50 border-white/5 h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-gray-500">School</label>
+                    <Input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} placeholder="University of Buea" className="bg-navy-900/50 border-white/5 h-9 text-sm" />
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                {/* Matricule */}
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Matricule No.</label>
-                  <Input
-                    type="text"
-                    value={matriculeNumber}
-                    onChange={(e) => setMatriculeNumber(e.target.value)}
-                    placeholder="e.g. FE12A345"
-                  />
-                </div>
-
-                {/* School Name */}
-                <div className="space-y-1 md:col-span-2">
-                  <label className="text-xs text-gray-400">School / University Name</label>
-                  <Input
-                    type="text"
-                    value={schoolName}
-                    onChange={(e) => setSchoolName(e.target.value)}
-                    placeholder="e.g. University of Buea"
-                  />
-                </div>
-
-                {/* Category */}
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Education Category</label>
-                  <select
-                    value={educationCategory}
-                    onChange={(e) => {
-                      setEducationCategory(e.target.value);
-                      // Reset level default when category changes
-                      if (e.target.value === 'University') setStudentLevel('Level 100');
-                      else setStudentLevel('Lower Sixth');
-                    }}
-                    className="flex h-10 w-full rounded-md border border-white/10 bg-navy-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ring-offset-navy-900"
-                  >
-                    <option value="University">University</option>
-                    <option value="Secondary">Secondary School (High School)</option>
-                  </select>
-                </div>
-
-                {/* Level */}
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Level</label>
+            <Card className="border-white/5 bg-navy-800/30">
+              <CardContent className="p-4 space-y-3">
+                <label className="text-[10px] uppercase font-bold text-gray-500">Department & Level</label>
+                <div className="flex gap-2">
+                  <Input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Dept" className="bg-navy-900/50 border-white/5 h-9 text-sm flex-1" />
                   <select
                     value={studentLevel}
                     onChange={(e) => setStudentLevel(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-white/10 bg-navy-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ring-offset-navy-900"
+                    className="flex h-9 rounded-md border border-white/5 bg-navy-900/50 px-3 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary"
                   >
-                    {educationCategory === 'University' ? (
-                      <>
-                        <option value="Level 100">Level 100</option>
-                        <option value="Level 200">Level 200</option>
-                        <option value="Level 300">Level 300</option>
-                        <option value="Level 400">Level 400</option>
-                        <option value="Masters 1">Masters 1</option>
-                        <option value="Masters 2">Masters 2</option>
-                        <option value="PhD">PhD</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="Form 5">Form 5</option>
-                        <option value="Lower Sixth">Lower Sixth</option>
-                        <option value="Upper Sixth">Upper Sixth</option>
-                      </>
-                    )}
+                    <option value="Level 100">Level 100</option>
+                    <option value="Level 200">Level 200</option>
+                    <option value="Level 300">Level 300</option>
+                    <option value="Level 400">Level 400</option>
                   </select>
                 </div>
+              </CardContent>
+            </Card>
 
-                {/* Department */}
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Department</label>
-                  <Input
-                    type="text"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="e.g. Computer Science"
-                  />
+            <Card className="border-white/5 bg-navy-800/30">
+              <CardContent className="p-4 space-y-3">
+                <label className="text-[10px] uppercase font-bold text-gray-500">Format & Delivery</label>
+                <div className="flex gap-2">
+                  <select
+                    value={submissionFormat}
+                    onChange={(e) => setSubmissionFormat(e.target.value)}
+                    className="flex h-9 rounded-md border border-white/5 bg-navy-900/50 px-3 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary flex-1"
+                  >
+                    <option value="docx">Word (.docx)</option>
+                    <option value="pdf">PDF (.pdf)</option>
+                  </select>
+                  <div className="flex flex-col gap-2 flex-1">
+                    <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="bg-navy-900/50 border-white/5 h-9 text-sm" />
+                    <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="WhatsApp (e.g. +1234567890)" className="bg-navy-900/50 border-white/5 h-9 text-sm" />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 space-y-2">
-              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-primary" /> Submission Format
-              </label>
-              <select
-                value={submissionFormat}
-                onChange={(e) => setSubmissionFormat(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-white/10 bg-navy-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ring-offset-navy-900"
-              >
-                <option value="docx">Word Document (.docx)</option>
-                <option value="pdf">PDF Document (.pdf)</option>
-              </select>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 space-y-2">
-              <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-primary" /> Delivery (Social)
-              </label>
-              <div className="space-y-3">
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email Address"
-                />
-                <Input
-                  type="tel"
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder="WhatsApp Number (e.g. +1234567890)"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-300">Assignment File</label>
-          <FileUpload onFileSelect={setFile} selectedFile={file} />
-        </div>
-
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <label className="block text-sm font-medium text-gray-300">Assignment Instructions / Prompt</label>
-            <textarea
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              placeholder="Paste the assignment question here..."
-              className="flex w-full rounded-md border border-white/10 bg-navy-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ring-offset-navy-900 min-h-[128px] resize-none"
-            />
-          </CardContent>
-        </Card>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-            <Feather className="w-4 h-4 text-primary" /> Style Mirroring (Doppelgänger)
-          </label>
-          <p className="text-xs text-gray-400">Upload a sample of your previous writing (essay, report) to mimic your style.</p>
-          <div className="border border-dashed border-gray-600 rounded-lg p-4 bg-navy-900/50 hover:bg-navy-900 transition-colors">
-            <input
-              type="file"
-              onChange={(e) => setStyleSample(e.target.files ? e.target.files[0] : null)}
-              className="block w-full text-sm text-gray-400
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-full file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-primary/20 file:text-primary
-                      hover:file:bg-primary/30
-                      cursor-pointer
-                    "
-            />
-            {styleSample && <p className="mt-2 text-sm text-green-400">Selected: {styleSample.name}</p>}
+              </CardContent>
+            </Card>
           </div>
         </div>
+      )}
 
-        <AudioPanel onAudioReady={setAudioBlob} />
+      {/* Results View (Shows the conversation) */}
+      {(result || isAnalyzing) && (
+        <div className="w-full flex-1 pb-48 pt-4">
+          <ResultsDisplay
+            history={chatHistory}
+            isLoading={isAnalyzing}
+          />
+        </div>
+      )}
 
+      {/* Sleek Bottom Input Bar */}
+      <div className="fixed bottom-8 left-0 right-0 md:left-64 flex justify-center px-4 z-50 pointer-events-none">
+        <div className="w-full max-w-4xl pointer-events-auto">
+          <div className="bg-navy-800/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-2 flex flex-col gap-2">
+            {/* File/Audio Previews can go here */}
+            {(file || audioBlob || styleSample) && (
+              <div className="flex gap-2 px-2 py-1 border-b border-white/5 mb-1">
+                {file && <span className="text-[10px] bg-primary/20 text-primary-light px-2 py-1 rounded-full flex items-center gap-1"><FileText size={10} /> {file.name}</span>}
+                {audioBlob && <span className="text-[10px] bg-warning/20 text-warning-light px-2 py-1 rounded-full flex items-center gap-1"><Mic size={10} /> Voice Note Recorded</span>}
+                {styleSample && <span className="text-[10px] bg-accent-cyan/20 text-accent-cyan px-2 py-1 rounded-full flex items-center gap-1"><Feather size={10} /> Style: {styleSample.name}</span>}
+              </div>
+            )}
 
+            <div className="flex items-end gap-2 px-2">
+              <div className="flex gap-1 pb-1">
+                <label
+                  className="p-2 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
+                  title="Attach assignment file (Document/Image)"
+                >
+                  <Plus size={20} />
+                  <input type="file" className="hidden" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} />
+                </label>
+                <label
+                  className="p-2 text-gray-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
+                  title="Upload writing sample for style mirroring (Doppelgänger)"
+                >
+                  <Feather size={20} />
+                  <input type="file" className="hidden" onChange={(e) => setStyleSample(e.target.files ? e.target.files[0] : null)} />
+                </label>
+              </div>
 
-        <Button
-          onClick={handleAnalyze}
-          disabled={isAnalyzing || (!file && !instructions && !audioBlob)}
-          className="w-full h-14 text-lg shadow-xl shadow-primary/20"
-        >
-          {isAnalyzing ? (
-            <>
-              <Loader2 className="animate-spin mr-2" /> Executing Assignment Agent...
-            </>
-          ) : (
-            <>
-              <Wand2 className="mr-2" /> Start Execution
-            </>
-          )}
-        </Button>
-      </div>
+              <textarea
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder="Ask anything or paste assignment details..."
+                className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder:text-gray-500 py-3 text-sm resize-none min-h-[44px] max-h-48"
+                rows={1}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = target.scrollHeight + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (result) handleRefine(instructions);
+                    else handleAnalyze();
+                    setInstructions('');
+                  }
+                }}
+              />
 
-      {/* Right Column: Recent or Results */}
-      <div className="space-y-6">
-        <ResultsDisplay result={result} isLoading={isAnalyzing} />
-        {!result && !isAnalyzing && (
-          <Card>
-            <CardContent className="p-6 text-center">
-              <h3 className="font-semibold text-white mb-4">Live Agent Status</h3>
-              <p className="text-sm text-gray-400 py-8">Ready to process assignments</p>
-            </CardContent>
-          </Card>
-        )}
+              <div className="flex gap-1 pb-1">
+                <AudioPanel
+                  onAudioReady={setAudioBlob}
+                  compact
+                />
+                <button
+                  onClick={result ? () => handleRefine(instructions) : handleAnalyze}
+                  disabled={isAnalyzing || (!file && !instructions && !audioBlob)}
+                  className="p-2.5 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                >
+                  {isAnalyzing ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                </button>
+              </div>
+            </div>
+          </div>
+          <p className="text-center text-[10px] text-gray-500 mt-3">
+            Free Research Preview. Assignment Agent may provide inaccurate info.
+          </p>
+        </div>
       </div>
     </div>
   );
 
-  const renderPlaceholder = (title: string, icon: React.ReactNode, message: string) => (
-    <Card className="max-w-2xl mx-auto mt-20">
-      <CardContent className="p-12 text-center">
-        <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-          {icon}
-        </div>
-        <h1 className="text-3xl font-bold text-white mb-4">{title}</h1>
-        <p className="text-gray-400 mb-8">{message}</p>
-        <Button onClick={() => setActiveTab('dashboard')} className="mx-auto">
-          Return to Dashboard
-        </Button>
-      </CardContent>
-    </Card>
-  );
-
   return (
-    <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
+    <MainLayout
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      history={historyItems}
+      onNewChat={handleNewChat}
+      onDeliver={handleDeliver}
+      isDelivering={isDelivering}
+      canDeliver={!!result && !result.delivered}
+    >
       {activeTab === 'dashboard' && renderDashboard()}
-      {activeTab === 'upload' && renderDashboard()} {/* Reuse dashboard for upload for now */}
       {activeTab === 'history' && <HistoryView />}
-      {activeTab === 'settings' && renderPlaceholder("System Settings", <SettingsIcon size={40} className="text-primary" />, "Configure API keys, default profiles, and system preferences.")}
+      {activeTab === 'settings' && <SettingsView />}
     </MainLayout>
   );
 }

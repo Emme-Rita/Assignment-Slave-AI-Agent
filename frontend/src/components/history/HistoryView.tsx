@@ -8,6 +8,7 @@ import { assignmentApi } from '../../lib/api';
 interface HistoryRecord {
     id: string;
     timestamp: string;
+    title: string;
     prompt: string;
     student_level: string;
     department: string;
@@ -111,7 +112,8 @@ export function HistoryView() {
                                             <Calendar size={14} className="text-gray-500" />
                                             <span className="text-xs text-gray-500 font-medium">{formatDate(record.timestamp)}</span>
                                         </div>
-                                        <p className="text-white font-medium mb-3 line-clamp-2">{record.prompt}</p>
+                                        <h4 className="text-white font-semibold text-lg mb-1">{record.title}</h4>
+                                        <p className="text-gray-400 text-sm mb-3 line-clamp-1">{record.prompt}</p>
                                         <div className="flex flex-wrap gap-2">
                                             <Badge variant="secondary">{record.student_level}</Badge>
                                             <Badge variant="secondary">{record.department}</Badge>

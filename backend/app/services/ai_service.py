@@ -11,9 +11,24 @@ genai.configure(api_key=settings.GEMINI_API_KEY)
 
 class AIService:
     def __init__(self):
-        # gemini-flash-latest is explicitly listed in available models
-        self.model = genai.GenerativeModel('gemini-flash-latest')
-        self.audio_model = genai.GenerativeModel('gemini-flash-latest')
+        # We try to use gemini-2.0-flash-lite for higher quotas and better stability
+        # Models to try in order of preference
+        models = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-flash-latest']
+        
+        self.model = None
+        for m_name in models:
+            try:
+                self.model = genai.GenerativeModel(m_name)
+                # Test the model immediately
+                # self.model.generate_content("hi") # Removed to avoid burning quota during init
+                break
+            except:
+                continue
+        
+        if not self.model:
+            self.model = genai.GenerativeModel('gemini-flash-latest')
+            
+        self.audio_model = self.model
     
     async def generate_response(
         self, 
@@ -23,24 +38,17 @@ class AIService:
         audio_data: Optional[dict] = None,
         student_level: Optional[str] = None,
         department: Optional[str] = None,
-        style_instruction: Optional[str] = None
+        style_instruction: Optional[str] = None,
+        history: Optional[List[dict]] = None
     ) -> str:
         """
-        Generate AI response based on prompt, file content, optional context, and audio.
-        
-        Args:
-            prompt: User's instruction/question
-            file_content: Extracted text from uploaded files
-            context: Additional context (e.g., from research)
-            audio_data: Dict containing 'data' (bytes) and 'mime_type' (str)
-            student_level: Academic qualification level
-            department: Field of study
+        Generate AI response based on prompt, file content, optional context, audio, and chat history.
         """
         try:
             # Build the prompt parts
             parts = []
             
-            # Add persona/context based on student profile
+            # 1. Base Context & Persona
             if student_level or department:
                 profile_context = "Role Context:\n"
                 if student_level:
@@ -49,6 +57,7 @@ class AIService:
                     profile_context += f"The field of study is {department}. Use appropriate terminology.\n"
                 parts.append(profile_context)
 
+            # 2. Reference Materials (Fixed Data)
             if style_instruction:
                 parts.append(f"STYLE INSTRUCTION (MIMIC THIS AUTHOR):\n{style_instruction}\n")
 
@@ -57,9 +66,23 @@ class AIService:
             
             if file_content:
                 parts.append(f"Assignment Content:\n{file_content}\n")
+
+            # 3. Chat History (if any)
+            if history:
+                parts.append("CONVERSATION SO FAR:\n")
+                for msg in history:
+                    role = msg.get("role", "user")
+                    content = msg.get("content", "")
+                    parts.append(f"{role.upper()}: {content}\n")
+                
+                parts.append("\nREFINEMENT INSTRUCTION:\n")
+                parts.append(f"The user wants to refine the previous output. Apply the following changes to the EXISTING work: {prompt}\n")
+                parts.append("IMPORTANT: Do NOT just answer the refinement. You MUST return the ENTIRE updated assignment (original + new additions/changes) as a single complete output.\n")
+            else:
+                # 4. Current Instructions (Initial Request)
+                parts.append(f"User Instructions:\n{prompt}")
             
-            parts.append(f"User Instructions:\n{prompt}")
-            
+            # 5. Output Constraints (System Instructions)
             parts.append("""
             IMPORTANT: Follow these strict instructions:
             1. You must return the response in valid JSON format with the following structure.
@@ -122,7 +145,25 @@ class AIService:
                 })
         
         except Exception as e:
-            raise Exception(f"AI Service Error: {str(e)}")
+            error_str = str(e)
+            
+            # Handle quota exceeded errors with user-friendly message
+            if "429" in error_str or "quota" in error_str.lower():
+                raise Exception(
+                    "AI Service Quota Exceeded: You've hit the daily request limit. "
+                    "Please try again later (quota resets at midnight UTC) or upgrade your Gemini API plan. "
+                    "Visit https://ai.google.dev/pricing for more information."
+                )
+            
+            # Handle rate limit errors
+            if "rate limit" in error_str.lower():
+                raise Exception(
+                    "AI Service Rate Limited: Too many requests in a short time. "
+                    "Please wait a few seconds and try again."
+                )
+            
+            # Generic error
+            raise Exception(f"AI Service Error: {error_str}")
     
     def _build_prompt(
         self, 

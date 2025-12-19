@@ -1,54 +1,34 @@
-import { Bot, CheckCircle, AlertCircle, BookOpen, ShieldCheck, Info, Download } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Bot, CheckCircle, ShieldCheck, Download, Info } from 'lucide-react';
+import { Card, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Alert, AlertTitle, AlertDescription } from '../ui/Alert';
-import { clsx } from 'clsx';
 import { assignmentApi } from '../../lib/api';
 
-interface VerificationResult {
-    trust_score: number;
-    is_reliable: boolean;
-    claims: Array<{
-        claim: string;
-        status: 'Supported' | 'Contradicted' | 'Unverified';
-        reasoning: string;
-        source: string;
-    }>;
-    citations: Array<{
-        citation: string;
-        status: string;
-        note: string;
-    }>;
-}
-
-interface AnalysisResult {
-    title?: string;
-    question?: string;
-    answer: string;
-    summary?: string;
-    note?: string;
-    more?: string;
-    verification?: VerificationResult;
-    file_generated?: string; // Path to generated file
-}
-
 interface ResultsDisplayProps {
-    result: AnalysisResult | null;
+    history: any[];
     isLoading: boolean;
 }
 
-export function ResultsDisplay({ result, isLoading }: ResultsDisplayProps) {
-    if (isLoading) {
+export function ResultsDisplay({ history, isLoading }: ResultsDisplayProps) {
+
+    if (isLoading && history.length === 0) {
         return (
             <div className="space-y-4 animate-pulse">
-                <div className="h-64 bg-navy-800 rounded-xl"></div>
-                <div className="h-32 bg-navy-800 rounded-xl"></div>
+                <div className="h-64 bg-navy-800 rounded-xl px-6 py-8">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 bg-white/5 rounded-lg animate-pulse" />
+                        <div className="h-6 w-32 bg-white/5 rounded animate-pulse" />
+                    </div>
+                    <div className="space-y-3">
+                        <div className="h-4 w-full bg-white/5 rounded animate-pulse" />
+                        <div className="h-4 w-5/6 bg-white/5 rounded animate-pulse" />
+                        <div className="h-4 w-4/6 bg-white/5 rounded animate-pulse" />
+                    </div>
+                </div>
             </div>
         );
     }
-
-    if (!result) return null;
 
     const getTrustBadgeVariant = (score: number) => {
         if (score >= 0.7) return 'success';
@@ -56,10 +36,9 @@ export function ResultsDisplay({ result, isLoading }: ResultsDisplayProps) {
         return 'destructive';
     };
 
-    const handleDownload = () => {
-        if (result.file_generated) {
-            // Extract filename from path
-            const filename = result.file_generated.split(/[\\/]/).pop();
+    const handleDownload = (file_generated?: string) => {
+        if (file_generated) {
+            const filename = file_generated.split(/[\\/]/).pop();
             if (filename) {
                 window.open(assignmentApi.getDownloadUrl(filename), '_blank');
             }
@@ -67,103 +46,87 @@ export function ResultsDisplay({ result, isLoading }: ResultsDisplayProps) {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/20 text-primary-light rounded-lg">
-                        <Bot size={24} />
-                    </div>
-                    <h2 className="text-xl font-bold text-white">Analysis Results</h2>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    {result.file_generated && (
-                        <Button variant="secondary" size="sm" onClick={handleDownload} className="gap-2 bg-navy-800 border border-white/10 hover:bg-navy-700">
-                            <Download size={16} />
-                            Download Result
-                        </Button>
-                    )}
-
-                    {result.verification && (
-                        <Badge variant={getTrustBadgeVariant(result.verification.trust_score)} className="gap-2 px-3 py-1.5 text-sm">
-                            <ShieldCheck size={16} />
-                            Trust: {Math.round(result.verification.trust_score * 100)}%
-                        </Badge>
-                    )}
-                </div>
-            </div>
-
-            <div className="grid gap-6">
-                {result.question && (
-                    <Alert>
-                        <Info className="h-4 w-4" />
-                        <AlertTitle>Identified Question</AlertTitle>
-                        <AlertDescription>{result.question}</AlertDescription>
-                    </Alert>
-                )}
-
-                <Card className="border-primary/30 shadow-primary/10">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                            <CheckCircle className="text-green-400" size={20} />
-                            Solution
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="prose prose-invert max-w-none text-gray-300">
-                            {result.answer}
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+            {history.map((msg, idx) => (
+                <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    {msg.role === 'user' ? (
+                        <div className="bg-navy-800/80 backdrop-blur-sm border border-white/5 rounded-2xl px-5 py-3 max-w-[80%] text-gray-200 text-sm shadow-xl">
+                            {msg.content}
                         </div>
-                    </CardContent>
-                </Card>
-
-                {result.verification && result.verification.claims.length > 0 && (
-                    <Card className="border-white/10">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-lg">
-                                <BookOpen className="text-blue-400" size={20} />
-                                Fact-Check Report
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {result.verification.claims.map((claim, idx) => (
-                                <div key={idx} className="p-3 bg-white/5 rounded border border-white/5">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <p className="text-sm text-gray-200">{claim.claim}</p>
-                                        <Badge variant={
-                                            claim.status === 'Supported' ? 'success' :
-                                                claim.status === 'Contradicted' ? 'destructive' : 'secondary'
-                                        }>
-                                            {claim.status}
-                                        </Badge>
+                    ) : (
+                        <div className="w-full space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary/20 text-primary-light rounded-lg">
+                                        <Bot size={20} />
                                     </div>
-                                    {claim.reasoning && (
-                                        <p className="text-xs text-gray-400 mt-2 pl-2 border-l-2 border-white/10">
-                                            {claim.reasoning}
-                                        </p>
+                                    <h2 className="text-sm font-bold text-gray-400">Response</h2>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    {msg.metadata?.file_generated && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => handleDownload(msg.metadata.file_generated)}
+                                            className="h-8 gap-2 bg-navy-800 border border-white/10 hover:bg-navy-700 text-xs px-3"
+                                        >
+                                            <Download size={14} />
+                                            Download
+                                        </Button>
+                                    )}
+
+                                    {msg.metadata?.verification && (
+                                        <Badge variant={getTrustBadgeVariant(msg.metadata.verification.trust_score)} className="gap-2 px-2 py-1 text-[10px]">
+                                            <ShieldCheck size={12} />
+                                            Trust: {Math.round(msg.metadata.verification.trust_score * 100)}%
+                                        </Badge>
                                     )}
                                 </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                )}
+                            </div>
 
-                {result.summary && (
-                    <Alert variant="success">
-                        <CheckCircle className="h-4 w-4" />
-                        <AlertTitle>Summary</AlertTitle>
-                        <AlertDescription>{result.summary}</AlertDescription>
-                    </Alert>
-                )}
+                            <div className="grid gap-6">
+                                {msg.metadata?.question && (
+                                    <Alert className="bg-navy-800/50 border-white/5 py-3">
+                                        <Info className="h-4 w-4 text-blue-400" />
+                                        <AlertTitle className="text-blue-400 text-[10px] font-bold uppercase tracking-wider">Identified Question</AlertTitle>
+                                        <AlertDescription className="text-gray-300 text-xs mt-1 leading-relaxed">
+                                            {msg.metadata.question}
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
 
-                {result.note && (
-                    <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Important Note</AlertTitle>
-                        <AlertDescription>{result.note}</AlertDescription>
-                    </Alert>
-                )}
-            </div>
+                                <Card className="border-primary/20 shadow-primary/5 overflow-hidden bg-navy-800/20">
+                                    <CardContent className="p-0">
+                                        <div className="p-6 prose prose-invert max-w-none text-gray-300 bg-navy-950/20 whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                                            {msg.content}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {msg.metadata?.summary && (
+                                    <Alert variant="success" className="bg-green-500/5 border-green-500/10 py-3">
+                                        <CheckCircle className="h-3 w-3 text-green-400" />
+                                        <AlertTitle className="text-green-400 text-[10px] font-bold uppercase tracking-wider">Summary</AlertTitle>
+                                        <AlertDescription className="text-gray-400 text-[11px] mt-1">{msg.metadata.summary}</AlertDescription>
+                                    </Alert>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ))}
+
+            {isLoading && (
+                <div className="flex items-center gap-3 animate-pulse pt-4">
+                    <div className="p-2 bg-primary/10 text-primary/50 rounded-lg">
+                        <Bot size={20} />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="h-2 w-24 bg-white/5 rounded" />
+                        <div className="h-2 w-32 bg-white/5 rounded" />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
-

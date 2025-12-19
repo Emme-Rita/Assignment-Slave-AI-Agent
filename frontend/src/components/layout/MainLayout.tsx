@@ -1,18 +1,37 @@
 import React from 'react';
 import { Sidebar } from './Sidebar';
-import { Search, User, Bell } from 'lucide-react';
+import { Search, User, Bell, CheckCircle } from 'lucide-react';
 import { Input } from '../ui/Input';
 
 interface MainLayoutProps {
     children: React.ReactNode;
     activeTab: string;
     onTabChange: (tab: string) => void;
+    history?: any[];
+    onNewChat?: () => void;
+    onDeliver?: () => void;
+    isDelivering?: boolean;
+    canDeliver?: boolean;
 }
 
-export function MainLayout({ children, activeTab, onTabChange }: MainLayoutProps) {
+export function MainLayout({
+    children,
+    activeTab,
+    onTabChange,
+    history,
+    onNewChat,
+    onDeliver,
+    isDelivering,
+    canDeliver
+}: MainLayoutProps) {
     return (
         <div className="min-h-screen bg-navy-900 text-white flex">
-            <Sidebar activeTab={activeTab} onTabChange={onTabChange} />
+            <Sidebar
+                activeTab={activeTab}
+                onTabChange={onTabChange}
+                history={history}
+                onNewChat={onNewChat}
+            />
 
             <main className="flex-1 md:ml-64 relative">
                 {/* Solid Background */}
@@ -34,6 +53,22 @@ export function MainLayout({ children, activeTab, onTabChange }: MainLayoutProps
                     </div>
 
                     <div className="flex items-center gap-4 ml-4">
+                        {canDeliver && onDeliver && (
+                            <button
+                                onClick={onDeliver}
+                                disabled={isDelivering}
+                                className={`px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${isDelivering
+                                    ? 'bg-gray-600 cursor-not-allowed'
+                                    : 'bg-success hover:bg-success-dark text-white shadow-lg shadow-success/20 animate-pulse'
+                                    }`}
+                            >
+                                {isDelivering ? (
+                                    <><div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Finalizing...</>
+                                ) : (
+                                    <><CheckCircle size={16} /> Final Submit</>
+                                )}
+                            </button>
+                        )}
                         <button className="p-2 text-gray-400 hover:text-white transition-colors relative">
                             <Bell size={20} />
                             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />

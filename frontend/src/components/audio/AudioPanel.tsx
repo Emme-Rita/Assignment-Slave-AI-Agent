@@ -5,9 +5,10 @@ import { Card, CardContent } from '../ui/Card';
 
 interface AudioPanelProps {
     onAudioReady: (blob: Blob | null) => void;
+    compact?: boolean;
 }
 
-export function AudioPanel({ onAudioReady }: AudioPanelProps) {
+export function AudioPanel({ onAudioReady, compact = false }: AudioPanelProps) {
     const [isRecording, setIsRecording] = useState(false);
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -86,6 +87,32 @@ export function AudioPanel({ onAudioReady }: AudioPanelProps) {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+    if (compact) {
+        return (
+            <div className="flex items-center gap-2">
+                {!audioUrl ? (
+                    <button
+                        onClick={isRecording ? stopRecording : startRecording}
+                        className={`p-2 rounded-lg transition-all ${isRecording ? 'text-red-500 animate-pulse bg-red-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                        {isRecording ? <Square size={20} /> : <Mic size={20} />}
+                    </button>
+                ) : (
+                    <div className="flex items-center gap-1 bg-white/5 rounded-lg px-2 py-1">
+                        <button onClick={togglePlayback} className="p-1 text-primary-light hover:text-white transition-colors">
+                            {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                        </button>
+                        <span className="text-[10px] font-mono text-gray-400">{formatTime(duration)}</span>
+                        <button onClick={deleteAudio} className="p-1 text-red-500/70 hover:text-red-500 transition-colors">
+                            <Trash2 size={14} />
+                        </button>
+                        <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} className="hidden" />
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
         <Card>
             <CardContent className="p-6 space-y-4">
@@ -110,7 +137,6 @@ export function AudioPanel({ onAudioReady }: AudioPanelProps) {
                             </Button>
 
                             <div className="flex-1 h-12 bg-white/5 rounded-lg flex items-center justify-center overflow-hidden relative group">
-                                {/* Viz Placeholder */}
                                 <div className="flex items-center gap-1 h-4">
                                     {[...Array(20)].map((_, i) => (
                                         <div
